@@ -1,0 +1,10 @@
+game/
+out/
+build/
+generated/
+__pycache__/
+*.pyc
+nand/
+dist/
+build2/
+*.zip

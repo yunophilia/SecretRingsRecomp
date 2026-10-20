@@ -1,0 +1,404 @@
+// High-level replacement for the WPAD library (Wii Remote over Bluetooth).
+//
+// The Bluetooth stack is never started. Instead the WPAD API functions that KPAD
+// and the game use are replaced: a Wii Remote (held sideways, no extension) is
+// reported on channel 0 and its samples are synthesised from the host gamepad (see
+// motion.cpp). This game's SDK (2007) has no sampling callback: KPAD hands WPAD a ring
+// buffer (WPADSetAutoSamplingBuf) that is filled on every report, and reads the
+// newest index with WPADGetLatestIndexInBuf.
+#include "../config.h"
+#include "../audio/audio_out.h"
+#include "gamepad.h"
+#include "motion.h"
+#include "../kernel/memory.h"
+#include "../cpu/cpu.h"
+#include "../log.h"
+#include "../../generated/ppc_recomp_shared.h"
+
+#include <algorithm>
+#include <deque>
+#include <windows.h>
+#include <Xinput.h>
+
+namespace
+{
+enum : int32_t
+{
+    WPAD_ERR_NONE = 0,
+    WPAD_ERR_NO_CONTROLLER = -1,
+    WPAD_ERR_BUSY = -2,
+};
+enum : uint32_t
+{
+    WPAD_DEV_CORE = 0,
+    WPAD_DEV_FREESTYLE = 1,
+    WPAD_DEV_CLASSIC = 2,
+    WPAD_DEV_NOT_FOUND = 253,
+};
+
+struct Chan
+{
+    uint32_t sampleBuf = 0;     // WPADSetAutoSamplingBuf ring buffer
+    uint32_t sampleLen = 0;
+    int32_t sampleIdx = -1;     // newest written entry
+    uint32_t connectCb = 0;
+    uint32_t extensionCb = 0;
+    bool reported = false;      // connection state last reported to the game
+    uint32_t dataFormat = 0;    // WPAD_FMT_CORE
+    bool motor = false;
+    bool speaker = false;       // WPADControlSpeaker ON .. OFF
+    int32_t adpcmPred = 0, adpcmStep = 127;
+    uint64_t lastSampleTb = 0;
+    bool dropped = false;       // disconnected by the game (WPADDisconnect) until a button is pressed
+};
+
+Chan s_chan[4];
+bool s_wpadInit = false;
+
+// Size of one ring buffer entry: WPADStatus, WPADFSStatus, WPADCLStatus, WPADBLStatus
+uint32_t StatusSize(uint32_t fmt)
+{
+    if (fmt <= 2) return 42;
+    if (fmt <= 5) return 50;
+    if (fmt <= 8) return 54;
+    return 90;
+}
+
+struct PendingCb
+{
+    uint32_t func;
+    uint32_t r3, r4;
+    int speakerChan = -1;   // speaker command: channel whose state changes on completion
+    int speakerOn = -1;     // 1: speaker becomes enabled, 0: disabled
+};
+std::deque<PendingCb> s_pending;
+
+// Remote 1 is always present (keyboard works without a pad); 2-4 follow XInput pads.
+// Like real remotes, 2-4 stay off after the game disconnects them until a button on
+// that controller is pressed.
+bool Connected(int chan)
+{
+    if (chan < 0 || chan >= 4 || !Gamepad_IsConnected(chan)) return false;
+    Chan& ch = s_chan[chan];
+    if (ch.dropped)
+    {
+        GamepadState pad;
+        Gamepad_Poll(chan, pad);
+        if (!pad.buttons) return false;
+        ch.dropped = false;
+    }
+    return true;
+}
+
+void CallGuest(PPCContext& ctx, uint8_t* base, uint32_t func, uint32_t r3, uint32_t r4)
+{
+    PPCContext saved = ctx;
+    ctx.r[1] -= 0x100;
+    ctx.r[3] = r3;
+    ctx.r[4] = r4;
+    ctx.lr = 0;
+    ppc_call_indirect(ctx, base, func);   // may live in the interpreted HOME menu module
+    ctx = saved;
+}
+}   // namespace
+
+// Runs pending callbacks and writes the samples that are due into KPAD's ring buffers.
+void WPAD_CheckRumble();
+void WPAD_Pump(PPCContext& ctx, uint8_t* base)
+{
+    WPAD_CheckRumble();
+    for (int c = 0; c < 4; c++)
+    {
+        Chan& ch = s_chan[c];
+        bool conn = Connected(c);
+        if (ch.connectCb && conn != ch.reported)
+        {
+            ch.reported = conn;
+            LOG_INFO("WPAD: controller {} {}", c, conn ? "connected" : "disconnected");
+            CallGuest(ctx, base, ch.connectCb, c, conn ? (uint32_t)WPAD_ERR_NONE : (uint32_t)WPAD_ERR_NO_CONTROLLER);
+        }
+    }
+    while (!s_pending.empty())
+    {
+        PendingCb p = s_pending.front();
+        s_pending.pop_front();
+        if (p.speakerChan >= 0 && p.speakerOn >= 0) s_chan[p.speakerChan].speaker = p.speakerOn != 0;
+        if (p.func) CallGuest(ctx, base, p.func, p.r3, p.r4);
+    }
+    // Real Wii Remotes report at ~200 Hz; deliver the samples that are due.
+    uint64_t now = Timebase_Now();
+    uint64_t period = TB_FREQ / 200;
+    for (int c = 0; c < 4; c++)
+    {
+        Chan& ch = s_chan[c];
+        if (!ch.sampleBuf || !ch.sampleLen || !Connected(c)) continue;
+        if (ch.lastSampleTb == 0 || now - ch.lastSampleTb > period * 16) ch.lastSampleTb = now - period;
+        int n = 0;
+        while (ch.lastSampleTb + period <= now && n < 16)
+        {
+            ch.lastSampleTb += period;
+            Motion_Step(c, 1.0f / 200.0f);
+            ch.sampleIdx = (ch.sampleIdx + 1) % (int32_t)ch.sampleLen;
+            uint32_t sz = StatusSize(ch.dataFormat);
+            Motion_FillStatus(c, ch.sampleBuf + ch.sampleIdx * sz, sz, true);
+            n++;
+        }
+    }
+}
+
+// ------------------------------------------------------------------ overrides
+// Addresses are this game's (RSRE8P) WPAD/KPAD library.
+
+// WPADInit
+PPC_FUNC(fn_802B0BC8)
+{
+    s_wpadInit = true;
+    LOG_INFO("WPAD: init (Bluetooth stack replaced by HLE)");
+}
+
+// WPADGetStatus (b WUDGetStatus) -> WPAD_STATE_SETUP
+PPC_FUNC(fn_802B0E2C)
+{
+    ctx.r[3] = 3;
+}
+
+// s32 WPADProbe(s32 chan, u32* type)
+PPC_FUNC(fn_802B228C)
+{
+    int chan = (int)ctx.r[3];
+    uint32_t typePtr = ctx.r[4];
+    if (chan < 0 || chan > 3 || !Connected(chan))
+    {
+        if (typePtr) Write32(typePtr, WPAD_DEV_NOT_FOUND);
+        ctx.r[3] = (uint32_t)WPAD_ERR_NO_CONTROLLER;
+        return;
+    }
+    if (typePtr) Write32(typePtr, WPAD_DEV_CORE);
+    ctx.r[3] = WPAD_ERR_NONE;
+}
+
+// void WPADSetAutoSamplingBuf(s32 chan, void* buf, u32 length)
+PPC_FUNC(fn_802B2814)
+{
+    int chan = (int)ctx.r[3] & 3;
+    Chan& ch = s_chan[chan];
+    ch.sampleBuf = ctx.r[4];
+    ch.sampleLen = ctx.r[5];
+    ch.sampleIdx = -1;
+    uint32_t sz = StatusSize(ch.dataFormat);
+    // entries start out as "no data" (err = WPAD_ERR_NO_CONTROLLER), as in the SDK
+    for (uint32_t i = 0; ch.sampleBuf && i < ch.sampleLen; i++)
+    {
+        memset(GuestPtr(ch.sampleBuf + i * sz), 0, sz);
+        Write8(ch.sampleBuf + i * sz + 41, (uint8_t)-1);
+    }
+}
+
+// s32 WPADGetLatestIndexInBuf(s32 chan)
+PPC_FUNC(fn_802B2990)
+{
+    int32_t idx = s_chan[ctx.r[3] & 3].sampleIdx;
+    ctx.r[3] = (uint32_t)(idx < 0 ? 0 : idx);
+}
+
+// WPADConnectCallback WPADSetConnectCallback(s32 chan, WPADConnectCallback cb)
+PPC_FUNC(fn_802B2318)
+{
+    int chan = (int)ctx.r[3] & 3;
+    uint32_t old = s_chan[chan].connectCb;
+    s_chan[chan].connectCb = ctx.r[4];
+    s_chan[chan].reported = false;
+    ctx.r[3] = old;
+}
+
+// WPADExtensionCallback WPADSetExtensionCallback(s32 chan, WPADExtensionCallback cb)
+PPC_FUNC(fn_802B2380)
+{
+    int chan = (int)ctx.r[3] & 3;
+    uint32_t old = s_chan[chan].extensionCb;
+    s_chan[chan].extensionCb = ctx.r[4];
+    ctx.r[3] = old;
+}
+
+// void WPADGetAccGravityUnit(s32 chan, u32 type, WPADAcc* acc)
+PPC_FUNC(fn_802B2104)
+{
+    uint32_t acc = ctx.r[5];
+    if (!acc) return;
+    int16_t g = (int16_t)Motion_GravityUnit(ctx.r[4]);
+    Write16(acc, (uint16_t)g);
+    Write16(acc + 2, (uint16_t)g);
+    Write16(acc + 4, (uint16_t)g);
+}
+
+// void WPADControlMotor(s32 chan, u32 command)
+PPC_FUNC(fn_802B2634)
+{
+    int chan = (int)ctx.r[3];
+    bool on = ctx.r[4] != 0;
+    if (chan < 0 || chan > 3) return;
+    if (on && (!g_config.rumble || !Gamepad_RumbleAllowed()))
+    {
+        static bool logged = false;
+        if (!logged) { logged = true; LOG_INFO("WPAD: rumble suppressed (disabled, automated input, or window not focused)"); }
+        on = false;
+    }
+    if (s_chan[chan].motor != on)
+    {
+        s_chan[chan].motor = on;
+        XINPUT_VIBRATION v{};
+        v.wLeftMotorSpeed = on ? 30000 : 0;
+        v.wRightMotorSpeed = on ? 20000 : 0;
+        XInputSetState(chan, &v);
+    }
+}
+
+// Safety net: if the window loses focus while a motor runs, stop it (polled with input).
+void WPAD_CheckRumble()
+{
+    bool any = false;
+    for (auto& c : s_chan) any |= c.motor;
+    if (any && !Gamepad_RumbleAllowed())
+    {
+        for (auto& c : s_chan) c.motor = false;
+        Gamepad_StopRumble();
+    }
+}
+
+// s32 WPADGetInfoAsync(s32 chan, WPADInfo* info, WPADCallback cb)
+PPC_FUNC(fn_802B2498)
+{
+    int chan = (int)ctx.r[3];
+    uint32_t info = ctx.r[4], cb = ctx.r[5];
+    if (chan < 0 || chan > 3 || !Connected(chan))
+    {
+        ctx.r[3] = (uint32_t)WPAD_ERR_NO_CONTROLLER;
+        return;
+    }
+    if (info)
+    {
+        // dpd, speaker, attach, lowBat, nearempty, battery, led, protocol, firmware
+        Write32(info + 0, 1);
+        Write32(info + 4, 0);
+        Write32(info + 8, 0);
+        Write32(info + 12, 0);
+        Write32(info + 16, 0);
+        Write8(info + 20, 4);
+        Write8(info + 21, (uint8_t)(1 << chan));
+        Write8(info + 22, 0);
+        Write8(info + 23, 0);
+    }
+    if (cb) s_pending.push_back({ cb, (uint32_t)chan, (uint32_t)WPAD_ERR_NONE });
+    ctx.r[3] = WPAD_ERR_NONE;
+}
+
+// BOOL WPADIsDpdEnabled(s32 chan)
+PPC_FUNC(fn_802B442C) { ctx.r[3] = 1; }
+
+// u8 WPADGetSensorBarPosition(void): SYSCONF BT.BAR, cached by the real WPADInit (1 = above the TV)
+PPC_FUNC(fn_802B4424) { ctx.r[3] = 1; }
+
+// s32 WPADDisconnect(s32 chan)
+PPC_FUNC(fn_802B21DC)
+{
+    int chan = (int)(ctx.r[3] & 3);
+    if (chan != 0 && !s_chan[chan].dropped)
+    {
+        LOG_INFO("WPAD: game disconnected controller {}", chan);
+        s_chan[chan].dropped = true;
+    }
+    ctx.r[3] = WPAD_ERR_NONE;
+}
+
+// s32 WPADControlSpeaker(s32 chan, u32 command, WPADCallback cb)
+// Commands complete asynchronously, in order; the speaker only counts as enabled
+// (WPADIsSpeakerEnabled) once the ON command has completed, as with a real remote.
+PPC_FUNC(fn_802B2C70)
+{
+    uint32_t chan = ctx.r[3], cmd = ctx.r[4], cb = ctx.r[5];
+    if (!Connected((int)chan))
+    {
+        ctx.r[3] = (uint32_t)WPAD_ERR_NO_CONTROLLER;
+        return;
+    }
+    Chan& ch = s_chan[chan];
+    int on = -1;
+    if (cmd == 0) on = 0;
+    else if (cmd == 1)
+    {
+        on = 1;
+        ch.adpcmPred = 0;
+        ch.adpcmStep = 127;
+    }
+    s_pending.push_back({ cb, chan, (uint32_t)WPAD_ERR_NONE, (int)chan, on });
+    ctx.r[3] = WPAD_ERR_NONE;
+}
+
+// BOOL WPADCanSendStreamData(s32 chan)
+PPC_FUNC(fn_802B41C0) { ctx.r[3] = Connected((int)ctx.r[3]) ? 1 : 0; }
+
+// BOOL WPADIsMotorEnabled(void) / void WPADEnableMotor(BOOL): the real WPADInit
+// caches SYSCONF BT.MOT (1)
+static bool s_motorEnabled = true;
+PPC_FUNC(fn_802B2734) { ctx.r[3] = s_motorEnabled ? 1 : 0; }
+PPC_FUNC(fn_802B2700) { s_motorEnabled = ctx.r[3] != 0; }
+
+// u8 WPADGetSpeakerVolume(void): the real WPADInit caches SYSCONF BT.SPKV (0x58)
+PPC_FUNC(fn_802B4004) { ctx.r[3] = 0x58; }
+
+// BOOL WPADIsSpeakerEnabled(s32 chan)
+PPC_FUNC(fn_802B2C2C) { ctx.r[3] = s_chan[ctx.r[3] & 3].speaker ? 1 : 0; }
+
+// s32 WPADSendStreamData(s32 chan, void* p, u16 len): Wii Remote speaker audio,
+// 4-bit Yamaha ADPCM (decoder as in Dolphin's WiimoteEmu speaker), played on the PC.
+PPC_FUNC(fn_802B4244)
+{
+    int chan = (int)ctx.r[3] & 3;
+    uint32_t p = ctx.r[4], len = ctx.r[5] & 0xFFFF;
+    Chan& ch = s_chan[chan];
+    static const int32_t kDiff[16] = { 1, 3, 5, 7, 9, 11, 13, 15, -1, -3, -5, -7, -9, -11, -13, -15 };
+    static const int32_t kScale[16] = { 230, 230, 230, 230, 307, 409, 512, 614, 230, 230, 230, 230, 307, 409, 512, 614 };
+    int16_t pcm[2 * 64];
+    uint32_t n = 0;
+    for (uint32_t i = 0; i < len && n + 2 <= std::size(pcm); i++)
+    {
+        uint8_t b = Read8(p + i);
+        for (uint8_t nib : { (uint8_t)(b >> 4), (uint8_t)(b & 15) })
+        {
+            ch.adpcmPred = std::clamp(ch.adpcmPred + ch.adpcmStep * kDiff[nib] / 8, -32768, 32767);
+            ch.adpcmStep = std::clamp((ch.adpcmStep * kScale[nib]) >> 8, 127, 24576);
+            pcm[n++] = (int16_t)ch.adpcmPred;
+        }
+    }
+    if (g_config.remoteSpeaker) AudioOut_PushSpeaker(chan, pcm, n);
+    ctx.r[3] = WPAD_ERR_NONE;
+}
+
+// u8 WPADGetRadioSensitivity(s32 chan)
+PPC_FUNC(fn_802B0E30) { ctx.r[3] = 100; }
+
+// s32 KPADRead(s32 chan, KPADStatus* samples, u32 length): deliver due samples first.
+PPC_FUNC(fn_80558E4C)
+{
+    WPAD_Pump(ctx, base);
+    fn_80558E4C_impl(ctx, base);
+}
+
+// s32 WPADSetDataFormat(s32 chan, u32 fmt)
+PPC_FUNC(fn_802B23E8)
+{
+    int chan = (int)ctx.r[3];
+    if (chan < 0 || chan > 3 || !Connected(chan)) { ctx.r[3] = (uint32_t)WPAD_ERR_NO_CONTROLLER; return; }
+    if (s_chan[chan].dataFormat != ctx.r[4])
+        LOG_INFO("WPAD: channel {} data format {}", chan, ctx.r[4]);
+    s_chan[chan].dataFormat = ctx.r[4];
+    ctx.r[3] = WPAD_ERR_NONE;
+}
+
+// s32 WPADControlDpd(s32 chan, u32 command, WPADCallback cb)
+PPC_FUNC(fn_802B4470)
+{
+    uint32_t chan = ctx.r[3], cb = ctx.r[5];
+    if (cb) s_pending.push_back({ cb, chan, (uint32_t)WPAD_ERR_NONE });
+    ctx.r[3] = WPAD_ERR_NONE;
+}
