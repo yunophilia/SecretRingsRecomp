@@ -135,6 +135,18 @@ void InputTab(SettingsHost host)
     Check(host, "Rumble", c.rumble, false, "Vibrate the controller where the Wii Remote would rumble.");
     ImGui::TextDisabled("View (Back) opens these settings. View + Start is the Wii HOME button.");
 
+    ImGui::SeparatorText("Steering");
+    if (ImGui::SliderFloat("Remote tilt at full stick", &c.tiltRange, 10.0f, 90.0f, "%.0f degrees"))
+        Changed(host, false);
+    Help("How far the left stick tilts the Wii Remote. Lower values steer more gently.");
+    bool inverted = c.tiltSign < 0;
+    if (ImGui::Checkbox("Invert steering", &inverted))
+    {
+        c.tiltSign = inverted ? -1.0f : 1.0f;
+        Changed(host, false);
+    }
+    Help("Swap left and right.");
+
     ImGui::SeparatorText("Button bindings");
     static const char* actions[12] = { "Jump (Wii 2)", "Homing attack (thrust the Remote)", "Brake / back (Wii 1)",
                                        "Shake the Remote", "Wii A", "Wii B", "Pause (Wii +)",

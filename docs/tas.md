@@ -63,17 +63,18 @@ COND: `file TEXT` (a disc file whose path contains TEXT was read since the last
 EXPR: hex address, probe `p0`..`p15`, `+`/`-` offsets and `[expr]` to read a pointer,
 e.g. `[80803e10]+2050`. Unmapped addresses read as missing values.
 
-## Known addresses (RENE8P)
+## Known addresses (RSRE8P)
 
 | what | expression |
 |---|---|
-| per-step time scale (1.0) | `f32 807FEEE4` (r13 = 0x808066C0) |
-| stage timer | `p0`: `u8 +1` minutes, `+2` seconds, `+3` 1/60 s, `f32 +4` |
-| rings | `s32 p1` |
-| score | `s32 p2+4` |
-| Soul gauge | `f32 p3` (max at `+4`) |
-| Sonic position | `f32 [8072bfbc]+380/+384/+388` (y up; in normal stages) |
-| buttons as the game sees them | `u16 80781582` (0x0800 = A) |
+| Sonic height above ground | `f32 9102cd4c` (Lost Prologue, fresh save, `tools/tas_srr/boot_stage1.tas`) |
+| distance along the path | `f32 9102cd50` (decreases while running forward) |
+| lateral offset | `f32 9102cd54` (left negative) |
+| KPAD channel 0 state | `80692b60` (stride 2104) |
+
+Buttons in scripts use this port's logical layout: A = Wii 2 (jump), X = thrust (homing
+attack), B = Wii 1 (brake), `LX` steers, `LY=-1` turns the remote upside down (backtrack).
+The BlackKnightRecomp scripts in `tools/tas/` are kept for reference only.
 
 ## Call counting
 

@@ -1,11 +1,10 @@
 {
   "$schema": "https://recomp.fyi/schema/v1.json",
-  "game": "Sonic and the Black Knight",
-  "wikidata": "Q2454500",
+  "game": "Sonic and the Secret Rings",
   "system": "Wii",
   "type": "recomp",
-  "status": "released",
+  "status": "in-progress",
   "targets": ["Windows"],
   "toolchain": ["clang-cl", "CMake"],
-  "original": {"region": "Europe", "serial": "RENE8P"}
+  "original": {"region": "Europe", "serial": "RSRE8P"}
 }

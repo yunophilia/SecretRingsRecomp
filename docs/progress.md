@@ -2,151 +2,57 @@
 
 ## Milestones
 
-- [x] Disc extraction, DOL parsing, SEL symbol table (280 named SDK/CRI functions)
-- [x] PPC (Gekko/Broadway) decoder covering every opcode in `main.dol`
-- [x] Function analysis: 28,762 functions, 298 switch jump tables, split-point closure
-- [x] Dolphin signature DB matching (~2,170 matches; OS/GX/DVD/WPAD/AX libraries named)
-- [x] C++ code generator (integer, FPU, paired singles + GQR quantisation, CR/XER, SPRs)
-- [x] Runtime: 4 GiB mirrored guest address space, fibers for guest threads,
-      exception delivery (external + decrementer), timer/scheduler thread
-- [x] Hardware: PI, VI (half-line accurate DI interrupts), EXI (RTC/SRAM), SI, DSP (mail
-      protocol, ROM/INIT/AX microcodes), AI DMA, Hollywood IPC, CP/PE + GX FIFO parser
-- [x] IOS HLE: /dev/di (extracted-file disc + error #001 checks), /dev/fs (host NAND,
-      generated SYSCONF/setting.txt), /dev/es, /dev/stm
-- [x] D3D11 renderer: vertex loader, TEV/lighting/texgen shader generator, texture decoders,
-      EFB copies, XFB present (untested on real frames yet)
-- [x] AX audio HLE (port of Dolphin's AXWii) + XAudio2 output (untested)
-- [x] WPAD HLE + gamepad motion synthesis (untested)
-- [x] First frame on screen
-- [x] Title screen / menus / FMV
-- [x] Gameplay with a gamepad (movement, jump, slash, guard, Soul Surge)
-- [x] Home Button Menu (`hbm_part.rso` runs in the interpreter; IR pointer from
-      mouse/right stick; Wii Menu quits, Reset restarts)
-- [x] config.ini, 3x internal resolution, 16:9, 60 FPS option (holds 60 in stage 1)
-- [x] GX on its own thread (dual-core style), disk shader cache, retrace-wait sleep
-- [x] Dolphin-format HD texture packs + texture dumping
-- [x] Wii Remote speaker audio, multiple controllers (Battle mode), button bindings
-- [x] 60 FPS mode keeps game time correct through menus, FMV and cutscenes
-- [x] HOME menu module recompiled (verified by hash at runtime); intro movie 60 fps
-- [x] Soak tests: 4 x 15 min + 30 min random input (30 and 60 fps) with no errors;
-      mission 1 cleared, results/save/retry/item codex/world map exercised
-- [x] Verify 60 FPS mode in all stage types: scripted 30 vs 60 comparison for every location,
-      mission type, boss and Battle arena, plus a full-settings pass (see "60 FPS verification")
-- [x] Controls tuning per stage type (on-rails runs, boss QTEs): play-tested through the first boss fights at 4x
-- [x] Launcher GUI in SecretRingsRecomp.exe, shown on every start (Dear ImGui):
-  - [x] Play button; settings page that edits config.ini, including button bindings
-  - [x] Asks for the disc image and installs it only when needed: first start, game/ has no
-        extracted game (e.g. deleted), or the installed files are corrupt
-  - [x] Corrupt-file check: quick (every file present with the right size, main.dol SHA-1)
-        on each start, full SHA-1 check of every file on request (known-good list in
-        runtime/install/rene8p_files.inc; also `srr_install --verify`)
-- [x] In-game settings overlay (Dusklight-style), opened with the controller's View button
-      (PS5: Create) or F1; the game keeps running underneath (no pause):
-  - [x] Tabs for video, input, audio and system settings, written back to config.ini
-  - [x] Settings apply live where possible (bindings, rumble, remote speaker, vsync,
-        fullscreen, window size, anisotropy, async shaders, pause on focus loss)
-  - [x] Restart-only settings (frame rate, internal resolution, widescreen, language,
-        texture packs, graphics thread) ask "This setting needs a restart. Restart the
-        game?" and restart on yes
-  - [x] View opens the overlay; Wii "-" is unbound by default (tested: "-" has no effect on
-        the title, menus, world map, mission select, gameplay or pause menu; "+" pauses) but
-        stays assignable; the HOME Menu stays on View+Start / H and is in the overlay
-- [ ] Live internal resolution and texture pack changes (they restart the game for now)
-- [ ] Play-test the launcher and overlay by hand (controller navigation, live settings)
+- [x] Fork of BlackKnightRecomp's recompiler and runtime, renamed and retargeted to RSRE8P
+      (installer game ID + main.dol SHA-1, file manifest, NAND title ID 52535245)
+- [x] Function analysis: 21,726 functions, 327 jump tables; SDK names from
+      `SONICRINGS.sel` and Dolphin's signature DB (2,618 matches)
+- [x] Runtime overrides remapped to this executable (OS context switch, interrupts,
+      OSReport/OSPanic/OSFatal, VIGetRetraceCount, WPAD) with `tools/fuzzymatch.py`
+- [x] Boot: OS, IOS, DVD, SC, NAND, DSP/AX, KPAD, HOME button RSO module (interpreted)
+- [x] Title screen, menus, file select, story scenes, FMV
+- [x] Gameplay (Lost Prologue): steering, jump, homing attack/air thrust, brake, backtracking
+- [x] 480p EURGB60: VI timing from HLW and the VI clock (was running at 50 Hz)
+- [x] 60 fps option (`frame_rate = 60`): speed 198.6 vs 198.4 units/s, jump 11.73 vs 11.75,
+      air time 0.53 s at both rates (tools/tas_srr/speed.tas)
+- [x] Settings: steering tilt range and inversion
+- [ ] Party mode minigames (Wii Remote speaker, multiple remotes) — untested
+- [ ] 60 fps in all worlds and Party mode (a 60 fps cheat code is known to break some)
+- [ ] Verify the bloom/glow pass against real hardware or Dolphin (dark halos behind the
+      crystal blocks in Lost Prologue come from a subtractive blend the game really uses)
+- [ ] Recompile the HOME menu module (`hbm_part.rso`, runs in the interpreter for now)
 
-## 60 FPS verification
+## Porting notes (RSRE8P)
 
-Method: TAS scripts (docs/tas.md) play the same input at 30 and 60 fps with the 99% PAL
-test save; telemetry, call counts and screenshots are compared (tools/tas/compare.py).
-Game code is not modified for this (read-only probes and input only).
+* r13 = 0x8069CC40, r2 = 0x806A1560. Exception handler table pointer at r13-15432
+  (0x80698FF8), the table itself at 0x80003000.
+* SEL section n is the DOL's text section n-1 (`tools/analyze.py` reads the bases from the DOL).
+* Frame pacing: retraces per frame = 60 / `[cfg+12]`; the initial 30 is `li r0,30` at
+  0x800B6878 (patched to the configured rate in `tools/recomp.py`).
+* Video mode: progressive scan (SC item 9 = IPL.PGS) with a component cable picks
+  EURGB60 480p (`GXRenderModeObj` at 0x805EF07C). This SC library reads items by ID
+  through a name table at 0x805B5058 (0 CB, 1 AR, 2 ARN, 3 DH, 4 E60, 5 IDL, 6 LNG, 7 NIK,
+  8 PC, 9 PGS, ...).
 
-- Game logic runs at a fixed 60 Hz in both modes: the stage timer and ~1,900 functions run
-  at the same rate per second; the per-step time scale (`f32 807FEEE4`) is 1.0 in both. At
-  30 fps the game runs two logic steps per rendered frame.
-- ~740 functions run once per rendered frame: rendering, CRI middleware servers
-  (`SVM_*` vsync servers, frame counter at 0x80753EFC) and part of the player movement.
-- Player movement integrates per rendered frame with the frame's time step, so 60 fps is
-  slightly more precise: a full jump is 40.8 vs 39.8 units high (+2.5%) and lasts 1.17 vs
-  1.13 s; the short hop is identical (10.2). Running speeds match within a few percent.
-  Not changed (it would need a game logic patch).
-- 27 missions covering all 13 locations, every mission type and all bosses (Lancelot x2,
-  Percival, Gawain, King Arthur, Dark Queen, Dragon Slayer): stage timer 0.997-1.000 of
-  real time at both rates, no errors, frame rate held (low-impact runs), start-of-mission
-  screenshots identical. Stage 1 (Misty Lake) was compared with the boot-to-mission script.
-- Full-settings pass (3x internal resolution, audio, normal priority; `tas_batch.ps1 -Full
-  -Rates 60`), all 34 scripts: during gameplay every one-second sample is >= 58.3 fps, no
-  errors. Only stage loading briefly dips (56-57 fps while sound banks load).
-- Battle mode, two scripted players, all 7 arenas: battle timer 0.999 of real time at both
-  rates (60 s rounds end on time), no errors, movement speeds and jump counts alike.
-- Open: a slowly drifting float block (~0x80866870, Misty Lake idle) changes ~1.75x faster
-  at 60 fps; heap address varies between runs, likely a visual effect.
+## Wii Remote (2006 WPAD/KPAD)
 
-## Performance notes
+* No WPADSetSamplingCallback. KPAD (0x80558C3C reset, 0x80558E4C KPADRead) gives WPAD a
+  32-entry ring buffer with `WPADSetAutoSamplingBuf` (0x802B2814) and reads
+  `WPADGetLatestIndexInBuf` (0x802B2990). Entry size depends on the data format
+  (42 core, 50 Nunchuk, 54 Classic, 90 other); byte 41 is the error code.
+* KPAD keeps re-sending the DPD (IR camera) command, and re-arming the buffer, until
+  `WPADIsDpdEnabled` matches the state it wants, so the HLE tracks `WPADControlDpd`.
+  The game turns DPD off (it does not use the pointer).
+* WPAD control blocks: pointer table at 0x8063AD30 (+2028 buffer, +2032 latest index,
+  +2036 length, +2040 data format). KPAD per-channel state at 0x80692B60, stride 2104.
+* The game's pad conversion (0x800B52DC) keeps the tilt vector (-acc.x, -acc.z, acc.y)
+  of KPAD's acceleration, averaged over the frame's samples (0x800B4954), and detects
+  thrusts/shakes from per-axis jerk above 0.6 (0x800B50D8).
+* Steering responds to roll (gravity between the remote's Z and Y axes). Backtracking only
+  happens with the remote upside down (gravity on -Z): ~105° of tilt does nothing,
+  175° moves Sonic backwards at 60 units/s.
 
-- Map(WRITE_DISCARD) of a big dynamic VB per draw made the driver stall (~31% of the
-  frame): vertex/index data now goes through NO_OVERWRITE ring buffers.
-- Texture validation is once per frame per texture; CI index data likewise, the
-  palette on every use. Hash64 uses 4 independent lanes.
-- Remaining CPU cost is mostly the vertex loader (~20%) and the GX FIFO parser.
+## Test telemetry (fresh save, Lost Prologue paragraph 1)
 
-## Bugs found by random-input soak tests
-
-`out/soak*.txt` are generated scripts (menus, then ~12 minutes of random stick/button
-input); run them with `tools/run_test.ps1 -Seconds 900 -GameArgs "--nobox --skip-launcher --input-script
-soak.txt --shots 1800 --shots-start 1800"`. The first one cleared mission 1 and found:
-
-- runtime display lists (GXBeginDisplayList redirects the CPU FIFO to RAM) were never
-  written to memory;
-- the HLSL depth clamp used a hex literal and became an unsigned clamp, so near-plane
-  pixels (2D UI) got max depth and full fog;
-- the VS/PS interface register of clipPos depended on the texgen count.
-
-## Threading notes
-
-- CPU thread appends write-gather bytes to a 32 MB lock-free ring; the GX thread copies
-  them into its FIFO buffer and runs `RunCommands` under `s_gpuLock`.
-- Sync points: CP status / FIFO pointer reads and EFB peeks call `GX_SyncGPU()`.
-- PE token/finish come from the GX thread: PE flags under `s_peMutex`, PI cause is atomic.
-
-## WPAD globals set by the real WPADInit
-
-Our WPADInit override skips the SDK's SYSCONF caching, so getters that read those
-r13 globals need HLE: speaker volume (0x803D6F40), motor enable (0x803D51C0/518C).
-Remote speaker: game streams 20-byte Yamaha ADPCM packets (6000 Hz) only after the
-ON command completes and an UNMUTE succeeds (state machine around 0x801355A0).
-
-## KPAD pointer notes
-
-- KPAD rejects IR dot pairs whose distance estimate (`kp+1348 / spacing`) is outside
-  (`kp+1352` ≈ 0.52, sdata `r13-14728`, which the game sets to 1.0). Dots are spaced
-  360 counts apart (≈0.74).
-- KPADStatus: pos at 0x20, horizon at 0x34, dist at 0x48, acc_vertical at 0x54,
-  dpd_valid_fg at 0x5E. KPAD per-channel state at 0x80781580 + chan*1472.
-
-## Boot log milestones
-
-1. `__start` → crash in BSS memset: decoder ignored the Rc bit of `rlwinm.` (fixed).
-2. `RealMode()` uses `rfi` to call a function with translation off → `rfi` = call/return.
-3. OS init: IOS version check needs `0x80003188` (set by the apploader) → set to IOS55.
-4. DVD "Error #001": out-of-bounds unencrypted reads must fail with 0x052100 and
-   `ReportKey` with 0x052000, as on a retail drive.
-5. Hang in `GXGetYScaleFactor`: single-precision ops must compute in double and round
-   the result (the int→float `0x43300000` trick depends on it) (fixed).
-
-## Build notes
-
-- Toolchain: Visual Studio 2026 Build Tools (MSVC 19.51 headers/libs, Windows SDK, CMake
-  4.3, Ninja) with clang-cl + lld-link (`windows-clang` preset); a standalone LLVM on
-  PATH is preferred when it is newer than VS's bundled clang. CMake rejects anything
-  older than VS2022. Full build ~2.5 min (MSVC 2019 took ~25-30 min); the clang build
-  used about 11% less CPU than the MSVC 2019 build over the same scripted 60 fps run.
-- `tools/dev_build.bat` finds the newest VS with vswhere, runs VsDevCmd and builds.
-- Recompiled code avoids MSVC intrinsics (`ppc_bswap*`, `ppc_rotl32` in `ppc_context.h`)
-  so the `linux-clang` preset builds it (verified with clang 21 in WSL).
-
-## Save file notes
-
-`game_N.sav` (49152 bytes): the first big-endian word is the negated 32-bit sum of all
-following bytes (`-(sum(b[4:])) & 0xFFFFFFFF`). Clearing missions changes a handful of
-bytes around 0x48F-0x600 (per-mission records start as 0xFFFF) and 0x163F-0x170B.
-Byte 0x48F is not the chapter/unlock flag.
+Sonic's path-relative state is at 0x9102CD4C (height above ground), 0x9102CD50 (distance
+along the path, decreasing while running forward) and 0x9102CD54 (lateral offset, left
+negative). The heap address is stable for the boot path in `tools/tas_srr/boot_stage1.tas`.

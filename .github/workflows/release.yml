@@ -35,8 +35,8 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force game/extracted/DATA/sys, game/extracted/DATA/files, out | Out-Null
           Copy-Item private-inputs/sys/main.dol game/extracted/DATA/sys/
-          Copy-Item private-inputs/files/BLACKKNIGHT.sel, private-inputs/files/hbm_part.rso game/extracted/DATA/files/
-          Copy-Item private-inputs/mem2_dump.bin out/
+          Copy-Item private-inputs/files/SONICRINGS.sel, private-inputs/files/hbm_part.rso game/extracted/DATA/files/
+          if (Test-Path private-inputs/mem2_dump.bin) { Copy-Item private-inputs/mem2_dump.bin out/ }
           Remove-Item -Recurse -Force private-inputs
 
       - uses: actions/setup-python@v5
@@ -72,9 +72,9 @@ jobs:
           # one line per paragraph: release notes keep single line breaks. Edit the notes on
           # the release page afterwards to add what changed.
           $notes = @"
-          Sonic and the Black Knight (Wii), statically recompiled to run natively on Windows.
+          Sonic and the Secret Rings (Wii), statically recompiled to run natively on Windows.
 
-          **This release contains no game data.** You need your own copy of the PAL version (RENE8P) as a disc image: ISO, RVZ, WIA or WBFS. Unzip, start ``SecretRingsRecomp.exe`` and select the image when the launcher asks; the game data is installed next to the exe.
+          **This release contains no game data.** You need your own copy of the PAL version (RSRE8P) as a disc image: ISO, RVZ, WIA or WBFS. Unzip, start ``SecretRingsRecomp.exe`` and select the image when the launcher asks; the game data is installed next to the exe.
 
           See the [README](https://github.com/${{ github.repository }}#readme) for controls and settings.
           "@
