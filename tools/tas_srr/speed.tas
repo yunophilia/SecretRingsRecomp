@@ -1,0 +1,16 @@
+# Sonic's running speed and stage timing (compare 30 vs 60 fps)
+include boot_stage1.tas
+watch h f32 9102cd4c
+watch dist f32 9102cd50
+watch lat f32 9102cd54
+wait 5
+log run
+wait 3
+log jump
+tap A 0.2
+wait 2
+log brake
+hold 2 B
+log end
+wait 1
+quit

@@ -383,12 +383,7 @@ PPC_FUNC(fn_802B0E30) { ctx.r[3] = 100; }
 PPC_FUNC(fn_80558E4C)
 {
     WPAD_Pump(ctx, base);
-    uint32_t chan = ctx.r[3], buf = ctx.r[4], len = ctx.r[5];
     fn_80558E4C_impl(ctx, base);
-    static int n = 0;
-    if (chan == 0 && (n++ % 30) == 0 || (chan == 0 && (int32_t)ctx.r[3] > 0 && Read32(buf) != 0))
-        LOG_INFO("DBG KPADRead chan {} len {} -> {} hold {:08x} trig {:08x} acc {:.2f} {:.2f} {:.2f} idx {} ", chan, len, (int32_t)ctx.r[3],
-                 Read32(buf), Read32(buf + 4), ReadF32(buf + 0x10), ReadF32(buf + 0x14), ReadF32(buf + 0x18), s_chan[0].sampleIdx);
 }
 
 // s32 WPADSetDataFormat(s32 chan, u32 fmt)

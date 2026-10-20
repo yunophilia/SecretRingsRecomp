@@ -753,6 +753,7 @@ PROBES = {
 
 # Instruction replacements (address -> C++). Used for runtime-configurable tweaks.
 PATCHES = {
+    0x800B6878: 'ctx.r[0] = g_cfgFrameRate;   // li r0,30: target frame rate (30 or 60)',
 }
 
 X_LDST = {
