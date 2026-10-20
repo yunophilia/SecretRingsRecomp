@@ -1,0 +1,6 @@
+# Fresh save: title -> Adventure -> new file -> Lost Prologue, Paragraph 01 -> skip story -> gameplay
+wait 8
+mash A 30 3
+mash START 9 3
+mash A 6 3
+log stage start (approx)

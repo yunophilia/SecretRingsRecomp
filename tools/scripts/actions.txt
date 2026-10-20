@@ -1,0 +1,22 @@
+# boot to Lost Prologue paragraph 1, then jump / homing / brake / backtrack tests
+10 0.2 A
+13 0.2 A
+16 0.2 A
+19 0.2 A
+22 0.2 A
+25 0.2 A
+28 0.2 A
+31 0.2 A
+34 0.2 A
+37 0.2 A
+45 0.2 START
+48 0.2 START
+51 0.2 START
+54 0.2 A
+57 0.2 A
+66 0.3 A
+68 0.3 A
+68.35 0.15 X
+71 2.5 B
+75 3 LY=-1.0
+79 0.2 A

@@ -212,7 +212,7 @@ void HiRes_Init(const std::string& configuredDir)
     }
     std::error_code ec;
     for (auto& r : roots)
-        for (const char* id : { "RENE8P", "RENE", "REN" })
+        for (const char* id : { "RSRE8P", "RSRE", "RSR" })
             if (fs::is_directory(r / id, ec)) Scan(r / id);
     if (s_files.empty()) return;
     CoInitializeEx(nullptr, COINIT_MULTITHREADED);
@@ -291,7 +291,7 @@ void HiRes_Dump(const uint8_t* data, uint32_t dataSize, const uint8_t* tlut, uin
     {
         wchar_t buf[MAX_PATH];
         GetModuleFileNameW(nullptr, buf, MAX_PATH);
-        dir = fs::path(buf).parent_path() / "dump" / "textures" / "RENE8P";
+        dir = fs::path(buf).parent_path() / "dump" / "textures" / "RSRE8P";
         std::error_code ec;
         fs::create_directories(dir, ec);
         CoInitializeEx(nullptr, COINIT_MULTITHREADED);

@@ -1,0 +1,17 @@
+# tilt forward / back while running
+include boot_stage1.tas
+watch dist f32 9102cd50
+watch lat f32 9102cd54
+wait 5
+log brake
+hold 2 B
+log back
+hold 3 LY=-1.0
+log fwd
+hold 3 LY=1.0
+log half_back
+hold 3 LY=-0.6
+log hold1
+hold 3 B
+log end
+quit

@@ -126,7 +126,7 @@ static void WindowThread(std::atomic<int>* ready)
     RegisterClassW(&wc);
     RECT r{ 0, 0, g_videoConfig.windowWidth, g_videoConfig.windowHeight };
     AdjustWindowRect(&r, WS_OVERLAPPEDWINDOW, FALSE);
-    s_hwnd = CreateWindowW(L"SecretRingsRecomp", L"Sonic and the Black Knight - Recompiled", WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+    s_hwnd = CreateWindowW(L"SecretRingsRecomp", L"Sonic and the Secret Rings - Recompiled", WS_OVERLAPPEDWINDOW | WS_VISIBLE,
                            CW_USEDEFAULT, CW_USEDEFAULT, r.right - r.left, r.bottom - r.top, nullptr, nullptr, wc.hInstance, nullptr);
     if (s_hwnd && g_videoConfig.fullscreen) SetFullscreen(s_hwnd, true);
     *ready = s_hwnd ? 1 : -1;

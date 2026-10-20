@@ -7,7 +7,7 @@ cols = int(sys.argv[2]) if len(sys.argv) > 2 else 4
 shots = sorted(glob.glob(os.path.join(ROOT, 'out', 'shot_*.bmp')))
 if len(sys.argv) > 4:
     shots = shots[int(sys.argv[3]):int(sys.argv[4])]
-w, h = 400, 300
+w, h = int(os.environ.get("CW", 400)), int(os.environ.get("CH", 300))
 rows = (len(shots) + cols - 1) // cols
 sheet = Image.new('RGB', (cols * w, max(1, rows) * h))
 d = ImageDraw.Draw(sheet)

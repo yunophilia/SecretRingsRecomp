@@ -1,0 +1,12 @@
+include boot_stage1.tas
+wait 6
+dump p0
+wait 1
+dump p1
+hold 2 LX=-1.0
+dump p2
+hold 2 LX=1.0
+dump p3
+hold 2 LX=1.0
+dump p4
+quit

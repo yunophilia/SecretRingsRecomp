@@ -125,7 +125,7 @@ void VideoTab(SettingsHost host)
           "Avoids hitches when new effects appear; an object may then show up a frame late.");
     Check(host, "Graphics on a second CPU core", c.gpuThread, true, "Like Dolphin's dual core mode. Leave on unless debugging.");
     Check(host, "HD texture packs", c.texturePack, true,
-          "Dolphin-format packs in textures/RENE8P next to the game, game/textures or Dolphin's Load/Textures.");
+          "Dolphin-format packs in textures/RSRE8P next to the game, game/textures or Dolphin's Load/Textures.");
 }
 
 void InputTab(SettingsHost host)
@@ -136,10 +136,10 @@ void InputTab(SettingsHost host)
     ImGui::TextDisabled("View (Back) opens these settings. View + Start is the Wii HOME button.");
 
     ImGui::SeparatorText("Button bindings");
-    static const char* actions[12] = { "Jump / homing attack (Wii A)", "Slash (swing the Remote)", "Soul Surge (Wii B)",
-                                       "Shake Nunchuk", "Guard / talk (Z)", "Nunchuk C", "Pause (Wii +)",
-                                       "Wii - (unused by the game)", "Wii 1", "Wii 2", "Thrust Remote forward",
-                                       "Pull Remote back" };
+    static const char* actions[12] = { "Jump (Wii 2)", "Homing attack (thrust the Remote)", "Brake / back (Wii 1)",
+                                       "Shake the Remote", "Wii A", "Wii B", "Pause (Wii +)",
+                                       "Wii -", "Wii 1 (extra)", "Wii 2 (extra)", "Thrust Remote forward",
+                                       "Tilt Remote back (backtrack)" };
     static const std::string buttons[] = { "A", "B", "X", "Y", "LB", "RB", "LT", "RT", "START", "BACK",
                                            "LS", "RS", "UP", "DOWN", "LEFT", "RIGHT", "NONE" };
     static const char* names[] = { "A", "B", "X", "Y", "LB", "RB", "LT", "RT", "Start", "View (Back, also opens settings)",
@@ -165,11 +165,11 @@ void InputTab(SettingsHost host)
     }
 
     ImGui::SeparatorText("Keyboard and mouse");
-    static const char* keyActions[21] = { "Jump / homing attack (Wii A)", "Slash (swing the Remote)", "Soul Surge (Wii B)",
-                                          "Shake Nunchuk", "Guard / talk (Z)", "Nunchuk C", "Pause (Wii +)", "Wii -",
-                                          "Wii 1", "Wii 2", "Thrust Remote forward", "Pull Remote back", "Wii HOME button",
-                                          "D-pad up", "D-pad down", "D-pad left", "D-pad right", "Move forward",
-                                          "Move back", "Move left", "Move right" };
+    static const char* keyActions[21] = { "Jump (Wii 2)", "Homing attack (thrust the Remote)", "Brake / back (Wii 1)",
+                                          "Shake the Remote", "Wii A", "Wii B", "Pause (Wii +)", "Wii -",
+                                          "Wii 1 (extra)", "Wii 2 (extra)", "Thrust Remote forward", "Tilt Remote back (backtrack)",
+                                          "Wii HOME button", "D-pad up", "D-pad down", "D-pad left", "D-pad right",
+                                          "Tilt back (move back)", "Tilt forward", "Steer left", "Steer right" };
     if (s_capture >= 0)
     {
         // waiting for a key: wait until everything is released (the click on "Set"), then

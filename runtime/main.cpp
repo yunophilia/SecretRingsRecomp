@@ -1,4 +1,4 @@
-// SecretRingsRecomp: statically recompiled Sonic and the Black Knight (RENE8P)
+// SecretRingsRecomp: statically recompiled Sonic and the Secret Rings (RSRE8P)
 #include "log.h"
 #include "config.h"
 #include "gx/video.h"
@@ -113,7 +113,7 @@ int main(int argc, char** argv)
         }
     };
     pick(dataDir, "game/extracted/DATA");
-    pick(isoPath, "game/RENE8P_Sonic_and_the_Black_Knight.iso");
+    pick(isoPath, "game/RSRE8P_SONIC_AND_THE_SECRET_RINGS.iso");
     if (isoPath.empty())
     {
         // any disc image in game/ next to the exe or the repo root

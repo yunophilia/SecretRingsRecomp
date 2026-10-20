@@ -162,7 +162,7 @@ bool Launcher_Run(std::string& dataDir, const std::string& isoPath, const fs::pa
     int w = 900, h = 640;
     RECT wa;
     SystemParametersInfoW(SPI_GETWORKAREA, 0, &wa, 0);
-    HWND hwnd = CreateWindowW(wc.lpszClassName, L"Sonic and the Black Knight - Recompiled", WS_OVERLAPPEDWINDOW,
+    HWND hwnd = CreateWindowW(wc.lpszClassName, L"Sonic and the Secret Rings - Recompiled", WS_OVERLAPPEDWINDOW,
                               wa.left + (wa.right - wa.left - w) / 2, wa.top + (wa.bottom - wa.top - h) / 2, w, h,
                               nullptr, nullptr, wc.hInstance, nullptr);
     DXGI_SWAP_CHAIN_DESC sd{};
@@ -250,7 +250,7 @@ bool Launcher_Run(std::string& dataDir, const std::string& isoPath, const fs::pa
         ImGui::SetNextWindowSize(vp->Size);
         ImGui::Begin("launcher", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings);
         ImGui::PushFont(nullptr, ImGui::GetStyle().FontSizeBase * 1.6f);
-        ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_CheckMark), "Sonic and the Black Knight");
+        ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_CheckMark), "Sonic and the Secret Rings");
         ImGui::PopFont();
         ImGui::TextDisabled("Recompiled for PC");
         float bottom = ImGui::GetFrameHeightWithSpacing() + ImGui::GetStyle().ItemSpacing.y;

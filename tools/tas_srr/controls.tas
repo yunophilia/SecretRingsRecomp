@@ -1,0 +1,26 @@
+# Lost Prologue: measure the effect of each control on Sonic's path position
+include boot_stage1.tas
+watch h f32 9102cd4c
+watch dist f32 9102cd50
+watch lat f32 9102cd54
+wait 5
+log run
+wait 2
+log brake
+hold 2 B
+log release
+wait 2
+log tiltback
+hold 3 LY=-1.0
+log release2
+wait 2
+log jump_thrust
+tap A 0.2
+wait 0.1
+tap X 0.15
+wait 1.5
+log jump_only
+tap A 0.2
+wait 1.6
+log end
+quit

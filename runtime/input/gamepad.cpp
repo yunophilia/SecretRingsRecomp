@@ -44,7 +44,7 @@ bool Gamepad_IsConnected(int index)
 }
 
 // Button bindings from config.ini: physical controller buttons -> the logical layout
-// the rest of the input code uses (A jump, X slash, B Wii B, ...).
+// the rest of the input code uses (A jump, X homing attack, B brake, ...).
 static uint32_t PhysicalBit(const std::string& name)
 {
     static const struct { const char* n; uint32_t b; } names[] = {

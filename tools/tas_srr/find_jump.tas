@@ -1,0 +1,11 @@
+include boot_stage1.tas
+wait 6
+dump j0
+tap A 0.3
+wait 0.15
+dump j1
+wait 0.25
+dump j2
+wait 2
+dump j3
+quit

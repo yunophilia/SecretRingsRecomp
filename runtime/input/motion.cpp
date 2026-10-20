@@ -93,10 +93,12 @@ void Motion_Step(int chan, float dt)
     float steer = std::clamp(p.lx, -1.0f, 1.0f) * g_config.tiltRange * (PI / 180.0f);
     s.roll = Approach(s.roll, steer, 8.0f, dt);
 
-    // Backtrack: tilting the remote back. Left stick down or LT; full = upside down-ish
-    float back = std::max({ -p.ly, p.lt, 0.0f });
-    float pitchTarget = back > 0.3f ? back * 110.0f * (PI / 180.0f) : 0.0f;
-    s.pitch = Approach(s.pitch, pitchTarget, 8.0f, dt);
+    // Backtrack: the game only moves Sonic backwards with the remote turned upside down
+    // (tilted all the way back), so stick down / LT past halfway flips it over. Pushing
+    // the stick up tilts it forward a little.
+    float back = std::max(-p.ly, p.lt);
+    float pitchTarget = back > 0.5f ? 180.0f : back < -0.3f ? back * 45.0f : 0.0f;
+    s.pitch = Approach(s.pitch, pitchTarget * (PI / 180.0f), 14.0f, dt);
 
     // Thrust forward (X / RT): homing attack, speed break forward motion
     bool thrust = pressed(PAD_X) || (p.rt > 0.6f && s.prevPad.rt <= 0.6f);
