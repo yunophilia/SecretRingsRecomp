@@ -1,0 +1,17 @@
+# HOME menu and pause menu during gameplay
+include boot_stage1.tas
+wait 4
+shot run
+tap HOME 0.3
+wait 2.5
+shot home
+tap B 0.2
+wait 2
+shot home_back
+tap START 0.2
+wait 1.5
+shot pause
+tap START 0.2
+wait 1.5
+shot resumed
+quit

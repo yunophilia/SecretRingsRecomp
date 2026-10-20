@@ -4,6 +4,7 @@
 #include "../kernel/memory.h"
 #include "../log.h"
 
+#include <map>
 #include <atomic>
 #include <cmath>
 #include <cstdio>
@@ -469,7 +470,16 @@ void Step(GamepadState* out)
             continue;
         }
         case Op::Log: Marker(c.text); next(); continue;
-        case Op::Shot: { std::lock_guard lk(s_shotMutex); s_shotName = c.text; } next(); continue;
+        case Op::Shot:
+        {
+            // a name used again (e.g. inside "repeat") gets a counter: more_2, more_3, ...
+            static std::map<std::string, int> uses;
+            int n = ++uses[c.text];
+            std::lock_guard lk(s_shotMutex);
+            s_shotName = n == 1 ? c.text : c.text + "_" + std::to_string(n);
+        }
+            next();
+            continue;
         case Op::Dump: DumpMemory(c.text); next(); continue;
         case Op::Calls: DumpCalls(c.text); next(); continue;
         case Op::Repeat:

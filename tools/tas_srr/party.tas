@@ -1,0 +1,37 @@
+# title -> main menu -> Party
+wait 28
+tap A 0.2
+wait 5
+shot menu
+tap RIGHT 0.2
+wait 1.5
+shot menu_right
+tap A 0.2
+wait 4
+shot party1
+tap A 0.2
+wait 4
+shot party2
+tap A 0.2
+wait 4
+shot party3
+tap A 0.2
+wait 4
+shot party4
+tap A 0.2
+wait 4
+shot party5
+tap A 0.2
+wait 6
+shot party6
+repeat 12
+tap A 0.2
+wait 2.5
+shot more
+end
+repeat 10
+hold 1.5 LX=-1.0+A
+hold 1.5 LX=1.0+X
+shot play
+end
+quit
