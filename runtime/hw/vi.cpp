@@ -27,11 +27,15 @@ static uint32_t TotalHalfLines()
     return t ? t : 1050;
 }
 
+// A half line lasts HLW samples at half the VI clock (27 MHz, or 54 MHz for progressive
+// modes), as in Dolphin: NTSC/EURGB60 HLW 429 -> 59.94 fields/s, PAL HLW 432 -> 50,
+// 480p (54 MHz, 525 lines per field) -> 59.94 frames/s.
 static double TicksPerHalfLine()
 {
-    uint32_t total = TotalHalfLines();
-    double frameRate = (total >= 1200) ? 25.0 : 30000.0 / 1001.0;
-    return (double)TB_FREQ / (frameRate * total);
+    uint32_t hlw = R(0x06) & 0x1FF;
+    if (hlw == 0) hlw = 429;
+    double clock = (R(0x6C) & 1) ? 54000000.0 : 27000000.0;
+    return (double)TB_FREQ * 2.0 * hlw / clock;
 }
 
 static uint32_t CurrentHalfLine(uint64_t now)
@@ -144,7 +148,7 @@ void VI_Write16(uint32_t off, uint16_t v)
         R(off) = v;
         ScheduleNext();
         break;
-    case 0x00: case 0x0C: case 0x0E: case 0x10: case 0x12: case 0x06:
+    case 0x00: case 0x0C: case 0x0E: case 0x10: case 0x12: case 0x06: case 0x6C:
         R(off) = v;
         s_t0 = Timebase_Now();
         ScheduleNext();

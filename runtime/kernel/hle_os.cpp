@@ -133,3 +133,4 @@ PPC_FUNC(fn_8053BA1C)
     else if (++repeats > 64 && (ctx.msr & 0x8000))
         Sched_IdleWait();
 }
+
