@@ -46,6 +46,7 @@ struct Chan
     bool reported = false;      // connection state last reported to the game
     uint32_t dataFormat = 0;    // WPAD_FMT_CORE
     bool motor = false;
+    bool dpd = true;            // IR camera on (WPADControlDpd)
     bool speaker = false;       // WPADControlSpeaker ON .. OFF
     int32_t adpcmPred = 0, adpcmStep = 127;
     uint64_t lastSampleTb = 0;
@@ -292,8 +293,9 @@ PPC_FUNC(fn_802B2498)
     ctx.r[3] = WPAD_ERR_NONE;
 }
 
-// BOOL WPADIsDpdEnabled(s32 chan)
-PPC_FUNC(fn_802B442C) { ctx.r[3] = 1; }
+// BOOL WPADIsDpdEnabled(s32 chan). KPAD compares it with the state it wants and keeps
+// re-sending the command (re-arming the sample buffer each time) until they agree.
+PPC_FUNC(fn_802B442C) { ctx.r[3] = s_chan[ctx.r[3] & 3].dpd ? 1 : 0; }
 
 // u8 WPADGetSensorBarPosition(void): SYSCONF BT.BAR, cached by the real WPADInit (1 = above the TV)
 PPC_FUNC(fn_802B4424) { ctx.r[3] = 1; }
@@ -381,7 +383,12 @@ PPC_FUNC(fn_802B0E30) { ctx.r[3] = 100; }
 PPC_FUNC(fn_80558E4C)
 {
     WPAD_Pump(ctx, base);
+    uint32_t chan = ctx.r[3], buf = ctx.r[4], len = ctx.r[5];
     fn_80558E4C_impl(ctx, base);
+    static int n = 0;
+    if (chan == 0 && (n++ % 30) == 0 || (chan == 0 && (int32_t)ctx.r[3] > 0 && Read32(buf) != 0))
+        LOG_INFO("DBG KPADRead chan {} len {} -> {} hold {:08x} trig {:08x} acc {:.2f} {:.2f} {:.2f} idx {} ", chan, len, (int32_t)ctx.r[3],
+                 Read32(buf), Read32(buf + 4), ReadF32(buf + 0x10), ReadF32(buf + 0x14), ReadF32(buf + 0x18), s_chan[0].sampleIdx);
 }
 
 // s32 WPADSetDataFormat(s32 chan, u32 fmt)
@@ -399,6 +406,7 @@ PPC_FUNC(fn_802B23E8)
 PPC_FUNC(fn_802B4470)
 {
     uint32_t chan = ctx.r[3], cb = ctx.r[5];
+    s_chan[chan & 3].dpd = ctx.r[4] != 0;
     if (cb) s_pending.push_back({ cb, chan, (uint32_t)WPAD_ERR_NONE });
     ctx.r[3] = WPAD_ERR_NONE;
 }

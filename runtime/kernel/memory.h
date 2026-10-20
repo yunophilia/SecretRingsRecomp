@@ -24,6 +24,7 @@ inline void Write8(uint32_t a, uint8_t v) { g_base[a] = v; }
 inline void Write16(uint32_t a, uint16_t v) { *(uint16_t*)(g_base + a) = _byteswap_ushort(v); }
 inline void Write32(uint32_t a, uint32_t v) { *(uint32_t*)(g_base + a) = _byteswap_ulong(v); }
 inline void Write64(uint32_t a, uint64_t v) { *(uint64_t*)(g_base + a) = _byteswap_uint64(v); }
+inline float ReadF32(uint32_t a) { uint32_t v = Read32(a); float f; memcpy(&f, &v, 4); return f; }
 
 // Translate any guest effective address (cached/uncached/physical) to the canonical
 // cached virtual address (0x8xxxxxxx / 0x9xxxxxxx).

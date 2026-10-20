@@ -180,8 +180,6 @@ static void TakeException(PPCContext& ctx, uint8_t* base, uint32_t exc)
     uint32_t table = Read32(ADDR_EXCEPTION_TABLE_PTR);
     uint32_t handler = table ? Read32(table + 4 * exc) : 0;
     uint32_t context = Read32(ADDR_OS_CURRENT_CONTEXT);
-    static int s_dbg = 0;
-    if (s_dbg < 8 && exc == EXC_EXTERNAL) { s_dbg++; LOG_INFO("DBG exc {} table {:08x} handler {:08x} ctx {:08x}", exc, table, handler, context); }
     if (!handler || !context)
         return;
     if (t->irqDepth >= 8)
