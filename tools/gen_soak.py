@@ -41,7 +41,7 @@ def main():
             lines.append(f'{t:.1f} {rnd.uniform(0.3, 1.5):.1f} B')
         elif r < 0.76:   # backtrack
             lines.append(f'{t:.1f} {rnd.uniform(0.5, 2):.1f} LY=-1.0')
-        elif r < 0.84:   # D-pad bursts + confirm: menus, results, mission select
+        elif r < 0.84:   # D-pad bursts + confirm: menus, results, paragraph select
             d, n = rnd.choice(['RIGHT', 'LEFT', 'UP', 'DOWN']), rnd.randint(1, 3)
             lines += [f'{t + 0.4 * k:.1f} 0.15 {d}' for k in range(n)]
             lines.append(f'{t + 0.4 * n + 0.3:.1f} 0.2 A')

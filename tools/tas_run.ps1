@@ -20,7 +20,10 @@ if (-not $Tag) { $Tag = [IO.Path]::GetFileNameWithoutExtension($Script) + $(if (
 $tasDir = Join-Path $out "tas"
 New-Item -ItemType Directory -Force $tasDir | Out-Null
 $saveSrc = Join-Path $out "tasnand\$Save"
-if (-not (Test-Path $saveSrc)) { throw "missing test save folder $saveSrc" }
+# "base" is an empty NAND: the game starts from a fresh save
+if (-not (Test-Path $saveSrc)) {
+    if ($Save -eq "base") { New-Item -ItemType Directory -Force $saveSrc | Out-Null } else { throw "missing test save folder $saveSrc" }
+}
 $nand = Join-Path $out "tasnand\run_$Tag"
 if (Test-Path $nand) { Remove-Item -Recurse -Force $nand }
 Copy-Item -Recurse $saveSrc $nand

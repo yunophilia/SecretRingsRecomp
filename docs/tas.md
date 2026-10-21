@@ -1,29 +1,36 @@
 # TAS scripts (test automation)
 
-Scripted runs drive player 1 with controller input timed by the guest clock and
-read game state for telemetry. They never change game code or game data: input goes
-through the normal controller path, telemetry only reads guest memory, and the
-recompiler's probes only copy a register into `g_tasProbe[]` (see `PROBES` in
-`tools/recomp.py`). While a script runs, real controllers are ignored, rumble is off and
-the keyboard is only read when the window has focus.
+Scripted runs drive player 1 with controller input timed by the guest clock and read
+game state for telemetry. They never change game code or game data: input goes through
+the normal controller path and telemetry only reads guest memory. While a script runs,
+real controllers are ignored, rumble is off and the keyboard is only read when the
+window has focus.
 
 ## Running
 
 ```
-powershell -ExecutionPolicy Bypass -File tools/tas_run.ps1 -Script tools/tas/x.tas [-Fps60] [-Save base|full] [-Full] [-Scale N]
-powershell -ExecutionPolicy Bypass -File tools/tas_batch.ps1 [-Filter name*]
-python tools/tas/gen_missions.py          # regenerate tools/tas/missions/*.tas
-python tools/tas/compare.py               # 30 vs 60 fps report -> out/tas/report.md
+powershell -ExecutionPolicy Bypass -File tools/tas_run.ps1 -Script tools/tas/speed.tas [-Fps60] [-Full] [-Scale N]
+powershell -ExecutionPolicy Bypass -File tools/tas_batch.ps1 [-Filter speed] [-Rates 30,60]
 ```
 
-`tas_run.ps1` copies `out/tasnand/<Save>` to a fresh save folder per run (the player's
-own `nand/` is never used), starts the game minimized and collects `out/tas/<tag>.log`
-and `<tag>.csv`. By default runs are low impact: muted, 1x internal resolution,
+`tas_run.ps1` copies `out/tasnand/<Save>` (default `base`, an empty NAND, so every run
+starts from a fresh save) to a run folder (the player's own `nand/` is never used),
+starts the game minimized and collects `out/tas/<tag>.log`, `<tag>.csv` and screenshots in
+`out/tas/shots/<tag>/`. Runs are low impact by default: muted, 1x internal resolution,
 below-normal priority (`-Full` uses the real settings). Game options for scripted runs:
 `--tas <script> --telemetry <csv> --nand <dir> --mute --scale <n>`.
 
-Test saves: `out/tasnand/base` (early progress) and `out/tasnand/full` (community PAL
-99% save, every mission unlocked).
+## Scripts (tools/tas)
+
+| script | what it does |
+|---|---|
+| `boot_stage1.tas` | shared prefix: fresh save, title, Adventure, new file, Lost Prologue paragraph 1, skips the story scene |
+| `speed.tas` | running speed, jump height and air time (compare the `_30` and `_60` CSVs) |
+| `controls.tas` | brake, tilt back, jump + thrust, plain jump |
+| `tilt.tas` | brake, then backtracking (remote upside down) and forward tilt |
+| `home_pause.tas` | HOME menu and pause menu during gameplay, with screenshots |
+| `party.tas` | main menu, Party mode setup, character select and the party board |
+| `find_player.tas`, `find_jump.tas` | memory dumps while steering / jumping; `find_pos.py` searches them for moving float vectors |
 
 ## Script language
 
@@ -53,8 +60,9 @@ guest time.
 INPUT: `A B X Y LB RB START BACK UP DOWN LEFT RIGHT HOME LS RS` joined with `+`, and
 analog values `LX= LY= RX= RY= LT= RT=` (-1..1) and pointer `PX= PY=` (0..1 of the
 screen), e.g. `hold 2 LY=1.0+A`. A word prefixed `P2:` is player 2's input, e.g.
-`tap A P2:A`. Buttons use the default logical layout (A jump, X
-slash, B Wii B, RB guard, ...).
+`tap A P2:A`. Buttons use this port's logical layout: A = Wii 2 (jump), X = thrust
+(homing attack), B = Wii 1 (brake), RB/LB = Wii A/B, START = +, HOME; `LX` steers and
+`LY=-1` turns the remote upside down (backtrack).
 
 COND: `file TEXT` (a disc file whose path contains TEXT was read since the last
 `filemark`) or `TYPE EXPR OP VALUE` with TYPE `u8 s8 u16 s16 u32 s32 f32` and OP
@@ -67,18 +75,9 @@ e.g. `[80803e10]+2050`. Unmapped addresses read as missing values.
 
 | what | expression |
 |---|---|
-| Sonic height above ground | `f32 9102cd4c` (Lost Prologue, fresh save, `tools/tas_srr/boot_stage1.tas`) |
+| Sonic height above ground | `f32 9102cd4c` (Lost Prologue, after `boot_stage1.tas`) |
 | distance along the path | `f32 9102cd50` (decreases while running forward) |
 | lateral offset | `f32 9102cd54` (left negative) |
 | KPAD channel 0 state | `80692b60` (stride 2104) |
 
-Buttons in scripts use this port's logical layout: A = Wii 2 (jump), X = thrust (homing
-attack), B = Wii 1 (brake), `LX` steers, `LY=-1` turns the remote upside down (backtrack).
-The BlackKnightRecomp scripts in `tools/tas/` are kept for reference only.
-
-## Call counting
-
-The `windows-clang-counts` preset builds `out/SecretRingsRecomp_counts.exe`, which counts
-calls to every main.dol function. Comparing counts per second at 30 and 60 fps
-separates code that runs per game logic step (same rate) from code that runs per
-rendered frame (twice the rate at 60 fps).
+The heap addresses hold for the fresh-save boot path above; other routes may differ.

@@ -13,7 +13,7 @@
 - [x] Gameplay (Lost Prologue): steering, jump, homing attack/air thrust, brake, backtracking
 - [x] 480p EURGB60: VI timing from HLW and the VI clock (was running at 50 Hz)
 - [x] 60 fps option (`frame_rate = 60`): speed 198.6 vs 198.4 units/s, jump 11.73 vs 11.75,
-      air time 0.53 s at both rates (tools/tas_srr/speed.tas)
+      air time 0.53 s at both rates (tools/tas/speed.tas)
 - [x] Settings: steering tilt range and inversion
 - [ ] Party mode minigames (Wii Remote speaker, multiple remotes) — untested
 - [ ] 60 fps in all worlds and Party mode (a 60 fps cheat code is known to break some)
@@ -55,4 +55,4 @@
 
 Sonic's path-relative state is at 0x9102CD4C (height above ground), 0x9102CD50 (distance
 along the path, decreasing while running forward) and 0x9102CD54 (lateral offset, left
-negative). The heap address is stable for the boot path in `tools/tas_srr/boot_stage1.tas`.
+negative). The heap address is stable for the boot path in `tools/tas/boot_stage1.tas`.

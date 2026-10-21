@@ -97,8 +97,8 @@ and the button/keyboard bindings.
 * `tools/run_test.ps1 -Seconds N -GameArgs "--nobox --skip-launcher --input-script <file> --shots N"`
   runs a timed input script and saves screenshots; `python tools/contact.py` makes a
   contact sheet of them.
-* `tools/tas_run.ps1 -Script tools/tas_srr/<x>.tas [-Fps60]` runs TAS scripts with telemetry
-  (docs/tas.md). `tools/tas_srr/speed.tas` measures Sonic's speed and jump at 30 vs 60 fps,
+* `tools/tas_run.ps1 -Script tools/tas/<x>.tas [-Fps60]` runs TAS scripts with telemetry
+  (docs/tas.md). `tools/tas/speed.tas` measures Sonic's speed and jump at 30 vs 60 fps,
   `controls.tas` / `tilt.tas` check brake, backtracking and air thrusts.
 * `python tools/gen_soak.py out/soak.txt` generates a random-input soak script.
 

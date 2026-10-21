@@ -1,15 +1,15 @@
-# Regression smoke test: boots through the menus into mission 1 with a scripted input
-# run (tools/scripts/mission1.txt), then checks the log and screenshots.
+# Regression smoke test: boots through the menus into Lost Prologue, paragraph 1, with a
+# scripted input run (tools/scripts/stage1.txt), then checks the log and screenshots.
 #   powershell -ExecutionPolicy Bypass -File tools/smoke_test.ps1 [-Fps60]
 # Needs the game files in game/ and a built out/SecretRingsRecomp.exe.
 param([switch]$Fps60)
 $root = Split-Path $PSScriptRoot
 $out = Join-Path $root "out"
-$script = Join-Path $PSScriptRoot "scripts\mission1.txt"
+$script = Join-Path $PSScriptRoot "scripts\stage1.txt"
 if (-not (Test-Path $script)) { throw "missing $script" }
-$args = "--nobox --skip-launcher --input-script `"$script`" --shots 600 --shots-start 600"
-if ($Fps60) { $args = "--nobox --skip-launcher --60fps --input-script `"$script`" --shots 1200 --shots-start 1200" }
-& (Join-Path $PSScriptRoot "run_test.ps1") -Seconds 200 -GameArgs $args | Out-Null
+$args = "--nobox --skip-launcher --input-script `"$script`" --shots 300 --shots-start 1500"
+if ($Fps60) { $args = "--nobox --skip-launcher --60fps --input-script `"$script`" --shots 600 --shots-start 3000" }
+& (Join-Path $PSScriptRoot "run_test.ps1") -Seconds 100 -GameArgs $args | Out-Null
 Start-Sleep 2
 $log = Get-Content (Join-Path $out "SecretRingsRecomp.log")
 $fail = @()
@@ -17,7 +17,7 @@ $fail = @()
 $errors = $log | Where-Object { $_ -like "[[]E]*" }
 if ($errors) { $fail += "$($errors.Count) error lines, first: $($errors[0])" }
 
-foreach ($m in @("XAudio2 initialised", "WPAD: controller 0 connected", "HOME menu module")) {
+foreach ($m in @("XAudio2 initialised", "WPAD: controller 0 connected", "Linking Home Button RSO module")) {
     if (-not ($log | Where-Object { $_ -like "*$m*" })) { $fail += "missing log line: $m" }
 }
 
@@ -31,7 +31,7 @@ if ($low.Count -gt 2) { $fail += "frame rate below $target in $($low.Count) stat
 # screenshots must not be blank
 Add-Type -AssemblyName System.Drawing
 $shots = Get-ChildItem $out -Filter "shot_*.bmp"
-if ($shots.Count -lt 5) { $fail += "only $($shots.Count) screenshots" }
+if ($shots.Count -lt 3) { $fail += "only $($shots.Count) screenshots" }
 foreach ($s in $shots | Select-Object -Last 3) {
     $bmp = [System.Drawing.Bitmap]::FromFile($s.FullName)
     $sum = 0
