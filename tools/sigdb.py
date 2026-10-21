@@ -57,7 +57,7 @@ def apply_names(funcs, path):
     hits = 0
     for f in funcs:
         if f['start'] in names:
-            f['sig'] = names[f['start']]
+            f['sig'] = names[f['start']].split('\t')[0].strip()
             hits += 1
     return hits
 
@@ -79,7 +79,8 @@ if __name__ == '__main__':
         if m:
             cands = [nm for nm, sz in m if sz == n * 4]
             if len(cands) >= 1 and n > 3:
-                f['sig'] = cands[0]
+                # the database appends the SDK library and its build path; keep the name
+                f['sig'] = cands[0].split('\t')[0].strip()
                 hits += 1
     print(f'{hits} signature matches', file=sys.stderr)
     json.dump(funcs, open(sys.argv[2], 'w'))
