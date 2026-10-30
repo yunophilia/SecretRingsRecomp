@@ -6,5 +6,5 @@
   "status": "in-progress",
   "targets": ["Windows"],
   "toolchain": ["clang-cl", "CMake"],
-  "original": {"region": "Europe", "serial": "RSRE8P"}
+  "original": {"region": "USA", "serial": "RSRE8P"}
 }

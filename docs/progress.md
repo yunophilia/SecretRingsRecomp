@@ -11,7 +11,10 @@
 - [x] Boot: OS, IOS, DVD, SC, NAND, DSP/AX, KPAD, HOME button RSO module (interpreted)
 - [x] Title screen, menus, file select, story scenes, FMV
 - [x] Gameplay (Lost Prologue): steering, jump, homing attack/air thrust, brake, backtracking
-- [x] 480p EURGB60: VI timing from HLW and the VI clock (was running at 50 Hz)
+- [x] Emulated console is a US (NTSC) Wii, as RSRE8P is the USA release; earlier builds
+      described a European console
+- [x] 480p at 60 Hz: VI timing from HLW and the VI clock (the old half-line heuristic
+      ran 480p modes at 50 Hz)
 - [x] 60 fps option (`frame_rate = 60`): speed 198.6 vs 198.4 units/s, jump 11.73 vs 11.75,
       air time 0.53 s at both rates (tools/tas/speed.tas)
 - [x] Settings: steering tilt range and inversion
@@ -29,7 +32,9 @@
 * Frame pacing: retraces per frame = 60 / `[cfg+12]`; the initial 30 is `li r0,30` at
   0x800B6878 (patched to the configured rate in `tools/recomp.py`).
 * Video mode: progressive scan (SC item 9 = IPL.PGS) with a component cable picks
-  EURGB60 480p (`GXRenderModeObj` at 0x805EF07C). This SC library reads items by ID
+  NTSC 480p (`GXRenderModeObj` at 0x805EEF8C; on a PAL console it would pick EURGB60
+  480p at 0x805EF07C, or PAL 50 Hz at 0x805EF004 without progressive scan).
+  This SC library reads items by ID
   through a name table at 0x805B5058 (0 CB, 1 AR, 2 ARN, 3 DH, 4 E60, 5 IDL, 6 LNG, 7 NIK,
   8 PC, 9 PGS, ...).
 

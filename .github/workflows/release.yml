@@ -74,7 +74,7 @@ jobs:
           $notes = @"
           Sonic and the Secret Rings (Wii), statically recompiled to run natively on Windows.
 
-          **This release contains no game data.** You need your own copy of the PAL version (RSRE8P) as a disc image: ISO, RVZ, WIA or WBFS. Unzip, start ``SecretRingsRecomp.exe`` and select the image when the launcher asks; the game data is installed next to the exe.
+          **This release contains no game data.** You need your own copy of the USA version (RSRE8P) as a disc image: ISO, RVZ, WIA or WBFS. Unzip, start ``SecretRingsRecomp.exe`` and select the image when the launcher asks; the game data is installed next to the exe.
 
           See the [README](https://github.com/${{ github.repository }}#readme) for controls and settings.
           "@

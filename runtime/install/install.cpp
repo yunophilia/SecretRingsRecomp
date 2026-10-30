@@ -133,7 +133,7 @@ InstallResult Install_Run(const fs::path& image, const fs::path& dest, InstallPr
     uint8_t sha[20];
     if (!Sha1(meta.raw_dol.data, meta.raw_dol.size, sha) || memcmp(sha, kDolSha1, 20) != 0)
     {
-        error = "this version of the game is not supported (main.dol differs from the PAL release this build is made for)";
+        error = "this version of the game is not supported (main.dol differs from the USA release this build is made for)";
         return InstallResult::WrongVersion;
     }
 

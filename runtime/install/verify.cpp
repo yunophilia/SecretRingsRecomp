@@ -88,7 +88,7 @@ DataStatus Install_QuickCheck(const fs::path& data, std::string& problem)
     const KnownFile* dol = Find("sys/main.dol");
     if (!HashFile(data / "sys" / "main.dol", hex, nullptr) || !dol || hex != dol->sha1)
     {
-        problem = "sys/main.dol does not match the supported PAL release";
+        problem = "sys/main.dol does not match the supported USA release";
         return DataStatus::Corrupt;
     }
     return DataStatus::Ok;

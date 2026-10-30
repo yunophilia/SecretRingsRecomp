@@ -295,7 +295,7 @@ static std::vector<uint8_t> BuildSysconf()
     e.push_back({ 2, "IPL.NIK", nick });
     e.push_back({ 3, "IPL.LNG", { (uint8_t)g_config.language } });
     std::vector<uint8_t> sadr(0x1007 + 1);
-    sadr[0] = 0x6E;   // United Kingdom (PAL)
+    sadr[0] = 0x31;   // United States
     e.push_back({ 1, "IPL.SADR", sadr });
     std::vector<uint8_t> pc(0x49 + 1);
     pc[1] = 0x04; pc[2] = 0x14;
@@ -308,7 +308,7 @@ static std::vector<uint8_t> BuildSysconf()
     e.push_back({ 7, "IPL.EULA", { 1 } });
     e.push_back({ 3, "IPL.UPT", { 2 } });
     e.push_back({ 3, "IPL.PGS", { 1 } });   // progressive scan
-    e.push_back({ 3, "IPL.E60", { 1 } });   // EuRGB60
+    e.push_back({ 3, "IPL.E60", { 0 } });   // EuRGB60 (PAL consoles only)
     e.push_back({ 3, "IPL.DH", { 0 } });
     e.push_back({ 5, "IPL.INC", { 0, 0, 0, 8 } });
     e.push_back({ 5, "IPL.FRC", { 0, 0, 0, 0x28 } });
@@ -352,14 +352,14 @@ std::vector<uint8_t> BuildSettingTxt()
             key = (key >> 31) | (key << 1);
         }
     };
-    line("AREA=EUR\r\n");
-    line("MODEL=RVL-001(EUR)\r\n");
+    line("AREA=USA\r\n");
+    line("MODEL=RVL-001(USA)\r\n");
     line("DVD=0\r\n");
     line("MPCH=0x7FFE\r\n");
-    line("CODE=LEH\r\n");
+    line("CODE=LU\r\n");
     line("SERNO=123456789\r\n");
-    line("VIDEO=PAL\r\n");
-    line("GAME=EU\r\n");
+    line("VIDEO=NTSC\r\n");
+    line("GAME=US\r\n");
     return out;
 }
 
@@ -379,8 +379,9 @@ void NAND_InitSystemFiles()
         std::ofstream(sc, std::ios::binary).write((const char*)b.data(), b.size());
     }
     fs::path st = HostPath("/title/00000001/00000002/data/setting.txt");
-    if (!fs::exists(st, ec))
     {
+        // also regenerated every boot (it holds no user data), so a NAND created by an
+        // older build that described a European console is corrected
         auto b = BuildSettingTxt();
         std::ofstream(st, std::ios::binary).write((const char*)b.data(), b.size());
     }

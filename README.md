@@ -1,6 +1,6 @@
 # SecretRingsRecomp
 
-A static recompilation of **Sonic and the Secret Rings** (Wii, PAL `RSRE8P`) to native
+A static recompilation of **Sonic and the Secret Rings** (Wii, USA `RSRE8P`) to native
 Windows x64. It is a sister project of
 [BlackKnightRecomp](https://github.com/yunophilia/BlackKnightRecomp): the recompiler and
 most of the runtime are shared, retargeted to this game's executable and its older
@@ -29,7 +29,7 @@ main.dol ──► tools/analyze.py ──► tools/recomp.py ──► generate
   thread is a host fiber (`OSSaveContext`/`OSLoadContext` become fiber switches) and
   external / decrementer exceptions are delivered at safe points.
 * **Hardware** (`runtime/hw`): VI (timing derived from the VI clock and line width, so
-  480p EURGB60 runs at 60 Hz), PI, CP/PE, DSP/AI, EXI, SI and the Hollywood IPC registers.
+  480p runs at 60 Hz), PI, CP/PE, DSP/AI, EXI, SI and the Hollywood IPC registers.
 * **IOS** (`runtime/ios`): high-level `/dev/di`, `/dev/fs` (NAND in `nand/` next to the exe;
   saves land in `nand/title/00010000/52535245/data`), `/dev/es`, `/dev/stm`.
 * **Graphics** (`runtime/gx`): the GX FIFO is decoded and rendered with Direct3D 11 on its own
@@ -47,7 +47,7 @@ main.dol ──► tools/analyze.py ──► tools/recomp.py ──► generate
 
 ## Playing
 
-Run `SecretRingsRecomp.exe`. On first run it asks for your own disc image of the game (PAL,
+Run `SecretRingsRecomp.exe`. On first run it asks for your own disc image of the game (USA,
 `RSRE8P`; ISO, RVZ, WIA or WBFS). The launcher installs the game data from it into
 `game/extracted/` next to the exe (about 3.5 GB); the image is not needed afterwards.
 

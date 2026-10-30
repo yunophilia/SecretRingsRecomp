@@ -174,7 +174,7 @@ void VI_Init()
 {
     // State left behind by the system menu (Dolphin's VideoInterface::Preset).
     R(0x00) = 6;                                   // EQU=6, ACV=0
-    R(0x02) = 0x0001 | (1 << 8);                   // ENB, FMT=PAL
+    R(0x02) = 0x0001;                              // ENB, FMT=NTSC
     R(0x04) = (uint16_t)(105 | (71 << 8));         // HCE, HCS
     R(0x06) = 429;                                 // HLW
     {
@@ -186,7 +186,7 @@ void VI_Init()
     R(0x10) = 4;   R(0x12) = 503;                  // even field PSB/PRB
     R(0x30) = 0x1000 | 263; R(0x32) = 430;         // DI0: retrace, enabled
     R(0x34) = 0x1000 | 1;   R(0x36) = 1;           // DI1: enabled
-    R(0x6C) = 0;                                   // 27 MHz clock (PAL)
+    R(0x6C) = 0;                                   // 27 MHz clock (interlaced)
     R(0x6E) = 1;                                   // component cable plugged (progressive capable)
     s_t0 = Timebase_Now();
     s_evt = Sched_RegisterEvent("VI", OnEvent);
