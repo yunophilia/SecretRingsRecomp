@@ -1,6 +1,9 @@
 #include "verify.h"
+#include "releases.h"
 
 #include <cstdio>
+#include <cstring>
+#include <iterator>
 #include <vector>
 #include <windows.h>
 #include <bcrypt.h>
@@ -14,10 +17,28 @@ struct KnownFile
     const char* path;
     uint64_t size;
     const char* sha1;   // hex
+    uint32_t releases;  // Release::mask bits
 };
 
-constexpr KnownFile kFiles[] = {
-#include "rsre8p_files.inc"
+constexpr KnownFile kAllFiles[] = {
+#include "releases_files.inc"
+};
+
+// The files of one release
+struct FileList
+{
+    uint32_t mask;
+    struct It
+    {
+        const KnownFile* p;
+        uint32_t mask;
+        void skip() { while (p != std::end(kAllFiles) && !(p->releases & mask)) ++p; }
+        const KnownFile& operator*() const { return *p; }
+        It& operator++() { ++p; skip(); return *this; }
+        bool operator!=(const It& o) const { return p != o.p; }
+    };
+    It begin() const { It i{ kAllFiles, mask }; i.skip(); return i; }
+    It end() const { return { std::end(kAllFiles), mask }; }
 };
 
 std::string Hex(const uint8_t* d, size_t n)
@@ -56,13 +77,23 @@ bool HashFile(const fs::path& p, std::string& hex, VerifyProgress* progress)
     return ok;
 }
 
-const KnownFile* Find(const char* path)
+const KnownFile* Find(const FileList& files, const char* path)
 {
-    for (auto& k : kFiles)
+    for (auto& k : files)
         if (strcmp(k.path, path) == 0) return &k;
     return nullptr;
 }
 }   // namespace
+
+const Release* Install_DataRelease(const fs::path& data)
+{
+    char id[6] = {};
+    FILE* f = _wfopen((data / "sys" / "boot.bin").c_str(), L"rb");
+    if (!f) return nullptr;
+    size_t n = fread(id, 1, 6, f);
+    fclose(f);
+    return n == 6 ? Release_Find(std::string_view(id, 6)) : nullptr;
+}
 
 DataStatus Install_QuickCheck(const fs::path& data, std::string& problem)
 {
@@ -72,8 +103,15 @@ DataStatus Install_QuickCheck(const fs::path& data, std::string& problem)
         problem = "the game data is not installed";
         return DataStatus::Missing;
     }
+    const Release* release = Install_DataRelease(data);
+    if (!release)
+    {
+        problem = "sys/boot.bin is missing or not from a supported release";
+        return DataStatus::Corrupt;
+    }
+    FileList files{ release->mask };
     int bad = 0;
-    for (auto& k : kFiles)
+    for (auto& k : files)
     {
         uint64_t size = fs::file_size(data / fs::path(std::u8string((const char8_t*)k.path)), ec);
         if (ec || size != k.size)
@@ -85,10 +123,10 @@ DataStatus Install_QuickCheck(const fs::path& data, std::string& problem)
     if (bad) return DataStatus::Corrupt;
     // the recompiled code only matches this exact main.dol
     std::string hex;
-    const KnownFile* dol = Find("sys/main.dol");
+    const KnownFile* dol = Find(files, "sys/main.dol");
     if (!HashFile(data / "sys" / "main.dol", hex, nullptr) || !dol || hex != dol->sha1)
     {
-        problem = "sys/main.dol does not match the supported USA release";
+        problem = std::string("sys/main.dol does not match the supported ") + release->name + " release";
         return DataStatus::Corrupt;
     }
     return DataStatus::Ok;
@@ -98,12 +136,13 @@ DataStatus Install_FullCheck(const fs::path& data, VerifyProgress& progress, std
 {
     DataStatus quick = Install_QuickCheck(data, problem);
     if (quick != DataStatus::Ok) return quick;
+    FileList files{ Install_DataRelease(data)->mask };
     uint64_t total = 0;
-    for (auto& k : kFiles) total += k.size;
+    for (auto& k : files) total += k.size;
     progress.total = total;
     progress.done = 0;
     int bad = 0;
-    for (auto& k : kFiles)
+    for (auto& k : files)
     {
         std::string hex;
         if (!HashFile(data / fs::path(std::u8string((const char8_t*)k.path)), hex, &progress))

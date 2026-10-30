@@ -69,6 +69,18 @@ struct PPCFuncMapping
 #define PPC_FUNC_IMPL(x) extern "C" void x##_impl(PPCContext& __restrict ctx, uint8_t* __restrict base)
 #define PPC_FUNC(x) extern "C" void x(PPCContext& __restrict ctx, uint8_t* __restrict base)
 #define PPC_FUNC_PROLOGUE() uint32_t ea; (void)ea
+// Runtime overrides are named by the USA/Japan main.dol's addresses. PPC_IMPL_DECL
+// declares the original code of an override (at file scope) and PPC_CALL_IMPL runs it:
+// the European build's own copy (eu_fn_XXXXXXXX_impl, same name) when running that
+// release (g_ppcEuCode, see region.h).
+#ifdef SRR_HAVE_EU
+extern "C" bool g_ppcEuCode;
+#define PPC_IMPL_DECL(x) PPC_FUNC_IMPL(x); PPC_FUNC_IMPL(eu_##x)
+#define PPC_CALL_IMPL(x) (g_ppcEuCode ? eu_##x##_impl : x##_impl)(ctx, base)
+#else
+#define PPC_IMPL_DECL(x) PPC_FUNC_IMPL(x)
+#define PPC_CALL_IMPL(x) x##_impl(ctx, base)
+#endif
 // Optional call counting for frame-rate analysis (SRR_CALL_COUNTS builds only):
 // one counter per main.dol function entry, indexed by address.
 #ifdef SRR_CALL_COUNTS

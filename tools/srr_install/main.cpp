@@ -3,6 +3,8 @@
 //
 //   srr_install <disc image> [destination, default game/extracted/DATA]
 //   srr_install --verify [data, default game/extracted/DATA]   full file check
+//   srr_install --build-inputs <disc image> [root, default game/inputs]
+//       main.dol and SONICRINGS.sel of another release, for tools/build_generated.py
 #include "install/install.h"
 #include "install/verify.h"
 
@@ -18,6 +20,18 @@ int wmain(int argc, wchar_t** argv)
     {
         fprintf(stderr, "usage: srr_install <disc image (ISO, RVZ, WBFS, ...)> [destination, default game/extracted/DATA]\n");
         return 2;
+    }
+    if (wcscmp(argv[1], L"--build-inputs") == 0 && argc > 2)
+    {
+        std::filesystem::path root = argc > 3 ? std::filesystem::path(argv[3]) : std::filesystem::path("game/inputs");
+        std::string id, error;
+        if (!Install_BuildInputs(argv[2], root, id, error))
+        {
+            fprintf(stderr, "failed: %s\n", error.c_str());
+            return 1;
+        }
+        fprintf(stderr, "wrote %s\n", (root / id).string().c_str());
+        return 0;
     }
     if (wcscmp(argv[1], L"--verify") == 0)
     {

@@ -12,15 +12,22 @@
 #include <vector>
 #include <windows.h>
 
+// original code of overrides that run it (PPC_CALL_IMPL)
+PPC_IMPL_DECL(fn_80528974);
+PPC_IMPL_DECL(fn_80528B58);
+PPC_IMPL_DECL(fn_8052C2A0);
+
 GuestThread* g_curThread = nullptr;
 static GuestThread s_mainThread;
 static std::unordered_map<uint32_t, GuestThread*> s_byContext;
 static std::vector<GuestThread*> s_graveyard;
 
-// Addresses in this executable (RSRE8P)
 static constexpr uint32_t ADDR_OS_CURRENT_THREAD = 0x800000E4;
 static constexpr uint32_t ADDR_OS_CURRENT_CONTEXT = 0x800000D4;
-static constexpr uint32_t ADDR_EXCEPTION_TABLE_PTR = 0x80698FF8;   // r13 - 15432
+// OS exception handler table pointer (r13 - 15432): r13 is 0x8069CC40 in the USA/Japan
+// main.dol and 0x8069CC00 in the European one
+extern "C" bool g_ppcEuCode;
+static uint32_t ExceptionTablePtr() { return g_ppcEuCode ? 0x80698FB8 : 0x80698FF8; }
 
 static constexpr SIZE_T FIBER_STACK = 256 * 1024 * 1024;
 
@@ -110,7 +117,7 @@ static GuestThread* CreateFromContext(uint32_t oc)
 PPC_FUNC(fn_80528974)
 {
     uint32_t oc = ctx.r[3];
-    fn_80528974_impl(ctx, base);
+    PPC_CALL_IMPL(fn_80528974);
     auto it = s_byContext.find(oc);
     if (it != s_byContext.end() && it->second != g_curThread)
     {
@@ -159,7 +166,7 @@ PPC_FUNC(fn_80528B58)
             s_graveyard.push_back(old);
         }
     }
-    fn_80528B58_impl(ctx, base);
+    PPC_CALL_IMPL(fn_80528B58);
 }
 
 // OSEnableInterrupts: when called with no current thread we are in the scheduler's
@@ -168,7 +175,7 @@ PPC_FUNC(fn_8052C2A0)
 {
     if (Read32(ADDR_OS_CURRENT_THREAD) == 0)
         Sched_IdleWait();
-    fn_8052C2A0_impl(ctx, base);
+    PPC_CALL_IMPL(fn_8052C2A0);
 }
 
 // ------------------------------------------------------------- exceptions
@@ -177,7 +184,7 @@ static void TakeException(PPCContext& ctx, uint8_t* base, uint32_t exc)
 {
     g_excCount[exc & 15]++;
     GuestThread* t = g_curThread;
-    uint32_t table = Read32(ADDR_EXCEPTION_TABLE_PTR);
+    uint32_t table = Read32(ExceptionTablePtr());
     uint32_t handler = table ? Read32(table + 4 * exc) : 0;
     uint32_t context = Read32(ADDR_OS_CURRENT_CONTEXT);
     if (!handler || !context)

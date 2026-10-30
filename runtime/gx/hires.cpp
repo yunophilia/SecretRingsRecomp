@@ -3,6 +3,7 @@
 #include "video.h"
 #include "texture_decode.h"
 #include "../log.h"
+#include "../region.h"
 
 #include <algorithm>
 #include <cstring>
@@ -211,8 +212,10 @@ void HiRes_Init(const std::string& configuredDir)
             roots.push_back(fs::path(up) / "Documents" / "Dolphin Emulator" / "Load" / "Textures");
     }
     std::error_code ec;
+    // packs for this release (RSRE8P, RSRE), or for every release (RSR)
+    const std::string gameId = g_release->gameId;
     for (auto& r : roots)
-        for (const char* id : { "RSRE8P", "RSRE", "RSR" })
+        for (const std::string& id : { gameId, gameId.substr(0, 4), gameId.substr(0, 3) })
             if (fs::is_directory(r / id, ec)) Scan(r / id);
     if (s_files.empty()) return;
     CoInitializeEx(nullptr, COINIT_MULTITHREADED);
@@ -291,7 +294,7 @@ void HiRes_Dump(const uint8_t* data, uint32_t dataSize, const uint8_t* tlut, uin
     {
         wchar_t buf[MAX_PATH];
         GetModuleFileNameW(nullptr, buf, MAX_PATH);
-        dir = fs::path(buf).parent_path() / "dump" / "textures" / "RSRE8P";
+        dir = fs::path(buf).parent_path() / "dump" / "textures" / g_release->gameId;
         std::error_code ec;
         fs::create_directories(dir, ec);
         CoInitializeEx(nullptr, COINIT_MULTITHREADED);

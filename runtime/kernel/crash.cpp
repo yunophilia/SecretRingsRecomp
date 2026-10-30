@@ -16,13 +16,13 @@
 #include <timeapi.h>
 #pragma comment(lib, "dbghelp.lib")
 
-extern "C" const PPCFuncMapping PPCFuncMappings[];
+const PPCFuncMapping* Cpu_FuncMappings();
 
 static std::vector<std::pair<uintptr_t, uint32_t>> s_hostToGuest;
 
 static void BuildMap()
 {
-    for (const PPCFuncMapping* m = PPCFuncMappings; m->host; m++)
+    for (const PPCFuncMapping* m = Cpu_FuncMappings(); m->host; m++)
         s_hostToGuest.push_back({ (uintptr_t)m->host, m->guest });
     std::sort(s_hostToGuest.begin(), s_hostToGuest.end());
 }

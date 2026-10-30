@@ -1,4 +1,4 @@
-// SecretRingsRecomp: statically recompiled Sonic and the Secret Rings (RSRE8P)
+// SecretRingsRecomp: statically recompiled Sonic and the Secret Rings (RSRE8P, RSRP8P, RSRJ8P)
 #include "log.h"
 #include "config.h"
 #include "gx/video.h"
@@ -10,6 +10,7 @@
 #include "hw/hw.h"
 #include "ios/disc.h"
 #include "ios/ios.h"
+#include "region.h"
 
 #include <algorithm>
 #include <filesystem>
@@ -165,6 +166,10 @@ int main(int argc, char** argv)
         dataDir = installDest.string();
     }
 
+    {
+        std::string error;
+        if (!Region_Select(dataDir, error)) FATAL("{}", error);
+    }
     if (!Memory_Init()) FATAL("memory init failed");
     Crash_Init();
     Cpu_Init();

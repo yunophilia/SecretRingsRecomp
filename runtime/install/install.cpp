@@ -1,4 +1,5 @@
 #include "install.h"
+#include "releases.h"
 
 #include <nod.h>
 
@@ -16,10 +17,6 @@ const wchar_t* const kInstallImageFilter = L"*.iso;*.rvz;*.wia;*.wbfs;*.ciso;*.g
 
 namespace
 {
-constexpr char kGameId[] = "RSRE8P";
-// SHA-1 of RSRE8P's main.dol, the binary the recompiled code is generated from
-constexpr uint8_t kDolSha1[20] = { 0xc4, 0xd6, 0x11, 0xda, 0x44, 0xcf, 0x89, 0xa6, 0xbc, 0x76,
-                                   0xc2, 0xec, 0x86, 0xc2, 0x44, 0x9e, 0xe2, 0x9a, 0xbc, 0xdb };
 constexpr uint64_t kUnencryptedSize = 0x50000;
 
 struct NodDeleter { void operator()(NodHandle* h) const { nod_free(h); } };
@@ -93,6 +90,78 @@ std::string Install_GameId(const fs::path& image)
     return std::string(h.game_id, 6);
 }
 
+bool Install_BuildInputs(const fs::path& image, const fs::path& root, std::string& gameId, std::string& error)
+{
+    NodPtr disc = OpenDisc(image, error);
+    if (!disc) return false;
+    NodDiscHeader header{};
+    if (nod_disc_header(disc.get(), &header) != NOD_RESULT_OK)
+    {
+        error = NodError();
+        return false;
+    }
+    gameId.assign(header.game_id, 6);
+    if (!Release_Find(gameId))
+    {
+        error = "the disc is " + gameId + ", not Sonic and the Secret Rings";
+        return false;
+    }
+    NodHandle* partRaw = nullptr;
+    if (nod_disc_open_partition_kind(disc.get(), NOD_PARTITION_KIND_DATA, nullptr, &partRaw) != NOD_RESULT_OK)
+    {
+        error = "cannot open the data partition: " + NodError();
+        return false;
+    }
+    NodPtr part(partRaw);
+    NodPartitionMeta meta{};
+    if (nod_partition_meta(part.get(), &meta) != NOD_RESULT_OK || !meta.raw_dol.data)
+    {
+        error = "cannot read the partition headers: " + NodError();
+        return false;
+    }
+    fs::path dir = root / gameId;
+    std::error_code ec;
+    fs::create_directories(dir / "sys", ec);
+    fs::create_directories(dir / "files", ec);
+    if (!WriteFile(dir / "sys" / "main.dol", meta.raw_dol.data, meta.raw_dol.size) ||
+        !WriteFile(dir / "sys" / "boot.bin", meta.raw_boot.data, meta.raw_boot.size))
+    {
+        error = "cannot write to " + dir.string();
+        return false;
+    }
+    // files/SONICRINGS.sel (function names) and files/hbm_part.rso (HOME menu module),
+    // both in the root directory of the file system
+    std::vector<FstEntry> fst;
+    nod_partition_iterate_fst(part.get(), CollectFst, &fst);
+    for (size_t i = 0; i < fst.size();)
+    {
+        const FstEntry& e = fst[i];
+        if (e.dir)
+        {
+            while (i < fst.size() && fst[i].index < e.size) i++;   // skip the subdirectory
+            continue;
+        }
+        if (e.name == "SONICRINGS.sel" || e.name == "hbm_part.rso")
+        {
+            NodHandle* fileRaw = nullptr;
+            if (nod_partition_open_file(part.get(), e.index, &fileRaw) != NOD_RESULT_OK)
+            {
+                error = "cannot read " + e.name + ": " + NodError();
+                return false;
+            }
+            NodPtr file(fileRaw);
+            std::vector<uint8_t> data(e.size);
+            if (!ReadExact(file.get(), data.data(), data.size()) || !WriteFile(dir / "files" / e.name, data.data(), data.size()))
+            {
+                error = "cannot copy " + e.name;
+                return false;
+            }
+        }
+        i++;
+    }
+    return true;
+}
+
 InstallResult Install_Run(const fs::path& image, const fs::path& dest, InstallProgress& progress, std::string& error)
 {
     NodPtr disc = OpenDisc(image, error);
@@ -103,9 +172,10 @@ InstallResult Install_Run(const fs::path& image, const fs::path& dest, InstallPr
         error = NodError();
         return InstallResult::OpenFailed;
     }
-    if (memcmp(header.game_id, kGameId, 6) != 0)
+    const Release* release = Release_Find(std::string_view(header.game_id, 6));
+    if (!release)
     {
-        error = "the disc is " + std::string(header.game_id, 6) + ", not Sonic and the Secret Rings (" + kGameId + ")";
+        error = "the disc is " + std::string(header.game_id, 6) + ", not Sonic and the Secret Rings (RSRE8P, RSRP8P or RSRJ8P)";
         return InstallResult::WrongGame;
     }
 
@@ -131,9 +201,10 @@ InstallResult Install_Run(const fs::path& image, const fs::path& dest, InstallPr
         return InstallResult::OpenFailed;
     }
     uint8_t sha[20];
-    if (!Sha1(meta.raw_dol.data, meta.raw_dol.size, sha) || memcmp(sha, kDolSha1, 20) != 0)
+    if (!Sha1(meta.raw_dol.data, meta.raw_dol.size, sha) || memcmp(sha, release->dolSha1, 20) != 0)
     {
-        error = "this version of the game is not supported (main.dol differs from the USA release this build is made for)";
+        error = std::string("this version of the game is not supported (main.dol differs from the ") + release->name +
+                " release this build is made for)";
         return InstallResult::WrongVersion;
     }
 

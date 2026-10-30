@@ -30,10 +30,10 @@ if (Test-Path $srcCache) {
 }
 @"
 You don't need to put anything here. Start SecretRingsRecomp.exe and select your own disc
-image (USA, RSRE8P; ISO, RVZ, WIA or WBFS) in the file dialog, wherever it is on your PC.
+image (USA, Europe or Japan; ISO, RVZ, WIA or WBFS) in the file dialog, wherever it is on your PC.
 The launcher installs the game data into this folder; the image is not needed afterwards.
 
 Optional, if you have one:
-  textures\RSRE8P\...                       (Dolphin-format HD texture pack)
+  textures\RSR\... or textures\<game ID>\...    (Dolphin-format HD texture pack)
 "@ | Set-Content (Join-Path $dist "game\ABOUT_THIS_FOLDER.txt")
 "packaged to $dist"

@@ -26,8 +26,8 @@ enum class InstallResult
 {
     Ok,
     OpenFailed,       // not a readable disc image
-    WrongGame,        // not RSRE8P
-    WrongVersion,     // RSRE8P, but main.dol differs from the one this build was made from
+    WrongGame,        // not one of the releases in releases.h
+    WrongVersion,     // a known game ID, but main.dol differs from the one this build was made from
     WriteFailed,
     Canceled,
 };
@@ -37,6 +37,11 @@ std::string Install_GameId(const std::filesystem::path& image);
 
 InstallResult Install_Run(const std::filesystem::path& image, const std::filesystem::path& dest,
                           InstallProgress& progress, std::string& error);
+
+// Build inputs of a release for tools/build_generated.py (another release than the
+// installed one): <root>/<game ID>/sys/{main.dol,boot.bin}, files/{SONICRINGS.sel,hbm_part.rso}
+bool Install_BuildInputs(const std::filesystem::path& image, const std::filesystem::path& root, std::string& gameId,
+                         std::string& error);
 
 // File dialog filter description of the supported image types
 extern const wchar_t* const kInstallImageFilter;

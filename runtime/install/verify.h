@@ -4,8 +4,10 @@
 #include <filesystem>
 #include <string>
 
-// Integrity checks of installed game data against the known RSRE8P file list
-// (rsre8p_files.inc: path, size and SHA-1 of every file the installer writes).
+// Integrity checks of installed game data against the known file list of its release
+// (releases_files.inc: path, size and SHA-1 of every file the installer writes).
+
+struct Release;
 
 enum class DataStatus
 {
@@ -21,6 +23,8 @@ struct VerifyProgress
     std::atomic<bool> cancel{ false };
 };
 
+// The release installed in data (from sys/boot.bin), or null
+const Release* Install_DataRelease(const std::filesystem::path& data);
 // Every file present with the right size, and main.dol's SHA-1 (a fraction of a second).
 DataStatus Install_QuickCheck(const std::filesystem::path& data, std::string& problem);
 // SHA-1 of every file (reads the whole 3.3 GB). Returns Ok if canceled before a problem.

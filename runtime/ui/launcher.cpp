@@ -6,6 +6,7 @@
 #include "../config.h"
 #include "../install/verify.h"
 #include "../log.h"
+#include "../region.h"
 
 #include <imgui.h>
 #include <imgui_impl_dx11.h>
@@ -103,14 +104,22 @@ void DrawHome(State& st, bool& play, const std::string& isoPath, const fs::path&
     const ImVec4 green(0.45f, 0.80f, 0.40f, 1), red(0.90f, 0.40f, 0.30f, 1);
     switch (st.status)
     {
-    case DataStatus::Ok: ImGui::TextColored(green, "Game data installed"); break;
+    case DataStatus::Ok:
+    {
+        const Release* r = Install_DataRelease(st.data);
+        ImGui::TextColored(green, "Game data installed (%s, %s)", r ? r->name : "?", r ? r->gameId : "?");
+        if (r && !Release_Runnable(*r))
+            ImGui::TextColored(red, "This build does not include the %s release's code; install the USA or Japanese release.", r->name);
+        break;
+    }
     case DataStatus::Missing: ImGui::TextColored(red, "Game data not installed"); break;
     case DataStatus::Corrupt: ImGui::TextColored(red, "Game data damaged: %s", st.problem.c_str()); break;
     }
     ImGui::TextDisabled("%s", st.data.string().c_str());
     ImGui::Spacing();
 
-    bool ready = st.status == DataStatus::Ok && !st.verifying;
+    const Release* release = st.status == DataStatus::Ok ? Install_DataRelease(st.data) : nullptr;
+    bool ready = release && Release_Runnable(*release) && !st.verifying;
     ImGui::BeginDisabled(!ready);
     if (ImGui::Button("  Play  ", ImVec2(ImGui::GetFontSize() * 10, ImGui::GetFontSize() * 2.4f))) play = true;
     ImGui::EndDisabled();

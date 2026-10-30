@@ -3,6 +3,7 @@
 #include "memory.h"
 #include "../ios/disc.h"
 #include "../log.h"
+#include "../region.h"
 
 #include <vector>
 
@@ -80,7 +81,7 @@ uint32_t Boot_Setup(const std::string& dataDir)
     Write16(L | 0x30E0, 0);
     Write32(L | 0x3184, 0x80000000);
     Write32(L | 0x3188, 0x0037161F);   // IOS version required by the title (set by the apploader)
-    Write32(L | 0x00CC, 0);            // NTSC (RSRE8P is the USA release)
+    Write32(L | 0x00CC, g_release->pal ? 1 : 0);   // TV mode: PAL for the European release, else NTSC
     auto setting = BuildSettingTxt();
     memcpy(GuestPtr(L | 0x3800), setting.data(), setting.size());
     Write32(L | 0x3194, 0);

@@ -1,6 +1,7 @@
 // First-run installer: asks for the disc image and installs the game data from it
 #include "install/install.h"
 #include "log.h"
+#include "region.h"
 
 #include <filesystem>
 #include <string>
@@ -29,7 +30,7 @@ bool PickImage(fs::path& out)
         return false;
     COMDLG_FILTERSPEC filters[] = { { L"Wii disc images", kInstallImageFilter }, { L"All files", L"*.*" } };
     dlg->SetFileTypes(2, filters);
-    dlg->SetTitle(L"Select your Sonic and the Secret Rings disc image (USA, RSRE8P)");
+    dlg->SetTitle(L"Select your Sonic and the Secret Rings disc image");
     bool ok = false;
     IShellItem* item = nullptr;
     if (SUCCEEDED(dlg->Show(nullptr)) && SUCCEEDED(dlg->GetResult(&item)))
@@ -87,7 +88,8 @@ bool InstallUI_Run(const fs::path& dest, const std::string& foundImage, const st
     HRESULT co = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
     bool installed = false;
     fs::path image;
-    if (!foundImage.empty() && Install_GameId(foundImage) == "RSRE8P")
+    const Release* found = foundImage.empty() ? nullptr : Release_Find(Install_GameId(foundImage));
+    if (found && Release_Runnable(*found))
     {
         std::wstring msg = why + L" Install it from\n\n" + Widen(foundImage) +
                            L"?\n\nChoose No to select a different disc image.";
@@ -99,7 +101,7 @@ bool InstallUI_Run(const fs::path& dest, const std::string& foundImage, const st
     {
         int r = MessageBoxW(nullptr,
                             (why + L"\n\nSelect your own disc image of Sonic and the "
-                            L"Secret Rings (USA, RSRE8P) to install it. ISO, RVZ, WIA and WBFS images work. "
+                            L"Secret Rings (USA, Europe or Japan) to install it. ISO, RVZ, WIA and WBFS images work. "
                             L"This takes a minute and needs about 3.5 GB; the image is not needed afterwards.").c_str(),
                             kTitle, MB_OKCANCEL | MB_ICONINFORMATION);
         if (r != IDOK) goto done;
@@ -109,7 +111,16 @@ bool InstallUI_Run(const fs::path& dest, const std::string& foundImage, const st
         if (image.empty() && !PickImage(image)) break;
         LOG_INFO("installing game data from {} to {}", image.string(), dest.string());
         std::string error;
-        InstallResult r = RunWithProgress(image, dest, error);
+        InstallResult r;
+        const Release* release = Release_Find(Install_GameId(image));
+        if (release && !Release_Runnable(*release))
+        {
+            // the European code set is optional at build time
+            r = InstallResult::WrongVersion;
+            error = std::string("this build does not include the ") + release->name + " release's code";
+        }
+        else
+            r = RunWithProgress(image, dest, error);
         if (r == InstallResult::Ok)
         {
             LOG_INFO("game data installed");

@@ -3,6 +3,7 @@
 #include "ios.h"
 #include "../kernel/memory.h"
 #include "../log.h"
+#include "../region.h"
 
 #include <filesystem>
 #include <fstream>
@@ -294,8 +295,9 @@ static std::vector<uint8_t> BuildSysconf()
     nick[21] = 6;
     e.push_back({ 2, "IPL.NIK", nick });
     e.push_back({ 3, "IPL.LNG", { (uint8_t)g_config.language } });
+    // country of the release's console: USA, Japan, or (for Europe) the United Kingdom
     std::vector<uint8_t> sadr(0x1007 + 1);
-    sadr[0] = 0x31;   // United States
+    sadr[0] = g_release->pal ? 0x6E : g_release->titleLo == 0x5253524A ? 0x01 : 0x31;
     e.push_back({ 1, "IPL.SADR", sadr });
     std::vector<uint8_t> pc(0x49 + 1);
     pc[1] = 0x04; pc[2] = 0x14;
@@ -308,7 +310,7 @@ static std::vector<uint8_t> BuildSysconf()
     e.push_back({ 7, "IPL.EULA", { 1 } });
     e.push_back({ 3, "IPL.UPT", { 2 } });
     e.push_back({ 3, "IPL.PGS", { 1 } });   // progressive scan
-    e.push_back({ 3, "IPL.E60", { 0 } });   // EuRGB60 (PAL consoles only)
+    e.push_back({ 3, "IPL.E60", { (uint8_t)(g_release->pal ? 1 : 0) } });   // EuRGB60 (PAL consoles only)
     e.push_back({ 3, "IPL.DH", { 0 } });
     e.push_back({ 5, "IPL.INC", { 0, 0, 0, 8 } });
     e.push_back({ 5, "IPL.FRC", { 0, 0, 0, 0x28 } });
@@ -352,14 +354,19 @@ std::vector<uint8_t> BuildSettingTxt()
             key = (key >> 31) | (key << 1);
         }
     };
-    line("AREA=USA\r\n");
-    line("MODEL=RVL-001(USA)\r\n");
+    // area, console model code, video standard and game region of the release's console
+    struct Area { const char* area; const char* code; const char* video; const char* game; };
+    const Area a = g_release->pal ? Area{ "EUR", "LEH", "PAL", "EU" }
+                 : g_release->titleLo == 0x5253524A ? Area{ "JPN", "LJ", "NTSC", "JP" }
+                                                    : Area{ "USA", "LU", "NTSC", "US" };
+    line(std::string("AREA=") + a.area + "\r\n");
+    line(std::string("MODEL=RVL-001(") + a.area + ")\r\n");
     line("DVD=0\r\n");
     line("MPCH=0x7FFE\r\n");
-    line("CODE=LU\r\n");
+    line(std::string("CODE=") + a.code + "\r\n");
     line("SERNO=123456789\r\n");
-    line("VIDEO=NTSC\r\n");
-    line("GAME=US\r\n");
+    line(std::string("VIDEO=") + a.video + "\r\n");
+    line(std::string("GAME=") + a.game + "\r\n");
     return out;
 }
 
@@ -367,7 +374,7 @@ void NAND_InitSystemFiles()
 {
     std::error_code ec;
     fs::create_directories(HostPath("/shared2/sys"), ec);
-    fs::create_directories(HostPath("/title/00010000/52535245/data"), ec);
+    fs::create_directories(HostPath(std::format("/title/00010000/{:08x}/data", g_release->titleLo)), ec);
     fs::create_directories(HostPath("/title/00000001/00000002/data"), ec);
     fs::create_directories(HostPath("/tmp"), ec);
     fs::create_directories(HostPath("/meta"), ec);
@@ -380,8 +387,8 @@ void NAND_InitSystemFiles()
     }
     fs::path st = HostPath("/title/00000001/00000002/data/setting.txt");
     {
-        // also regenerated every boot (it holds no user data), so a NAND created by an
-        // older build that described a European console is corrected
+        // also regenerated every boot (it holds no user data): it describes the console
+        // of the release being run
         auto b = BuildSettingTxt();
         std::ofstream(st, std::ios::binary).write((const char*)b.data(), b.size());
     }

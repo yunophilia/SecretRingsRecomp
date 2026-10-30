@@ -14,6 +14,18 @@
 #include <windows.h>
 
 extern "C" const PPCFuncMapping PPCFuncMappings[];
+#ifdef SRR_HAVE_EU
+extern "C" const PPCFuncMapping PPCFuncMappings_eu[];   // the European main.dol (region.h)
+#endif
+extern "C" bool g_ppcEuCode = false;
+
+const PPCFuncMapping* Cpu_FuncMappings()
+{
+#ifdef SRR_HAVE_EU
+    if (g_ppcEuCode) return PPCFuncMappings_eu;
+#endif
+    return PPCFuncMappings;
+}
 
 static constexpr uint32_t CODE_BEGIN = 0x80004000;
 static constexpr uint32_t CODE_END = 0x80700000;
@@ -57,7 +69,7 @@ void Cpu_Init()
 #ifdef PPC_RSO_TEXT_BEGIN
     s_rsoTable.assign((PPC_RSO_TEXT_END - PPC_RSO_TEXT_BEGIN) / 4, nullptr);
 #endif
-    for (const PPCFuncMapping* m = PPCFuncMappings; m->host; m++, n++)
+    for (const PPCFuncMapping* m = Cpu_FuncMappings(); m->host; m++, n++)
     {
 #ifdef PPC_RSO_TEXT_BEGIN
         if (m->guest >= PPC_RSO_TEXT_BEGIN && m->guest < PPC_RSO_TEXT_END)

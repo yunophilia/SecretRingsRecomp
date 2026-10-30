@@ -1,7 +1,7 @@
 # SecretRingsRecomp
 
-A static recompilation of **Sonic and the Secret Rings** (Wii, USA `RSRE8P`) to native
-Windows x64. It is a sister project of
+A static recompilation of **Sonic and the Secret Rings** (Wii: USA `RSRE8P`, Europe
+`RSRP8P`, Japan `RSRJ8P`) to native Windows x64. It is a sister project of
 [BlackKnightRecomp](https://github.com/yunophilia/BlackKnightRecomp): the recompiler and
 most of the runtime are shared, retargeted to this game's executable and its older
 (2006/2007) Wii SDK. The goal: play it natively on PC with a normal controller instead of
@@ -47,9 +47,17 @@ main.dol ──► tools/analyze.py ──► tools/recomp.py ──► generate
 
 ## Playing
 
-Run `SecretRingsRecomp.exe`. On first run it asks for your own disc image of the game (USA,
-`RSRE8P`; ISO, RVZ, WIA or WBFS). The launcher installs the game data from it into
+Run `SecretRingsRecomp.exe`. On first run it asks for your own disc image of the game (USA
+`RSRE8P`, Europe `RSRP8P` or Japan `RSRJ8P`; ISO, RVZ, WIA or WBFS). The launcher installs the game data from it into
 `game/extracted/` next to the exe (about 3.5 GB); the image is not needed afterwards.
+
+All three releases have the same game data, with the same six languages. The USA and
+Japanese discs share one executable. The European disc has its own build of it: the same
+code at slightly different addresses, minus a cap at 999 on one counter that the USA build
+has. It is recompiled separately and included in the same exe. The emulated Wii matches
+the disc: an NTSC console for USA and Japan, and a PAL console with EuRGB60 (60 Hz) for
+Europe. Each release keeps its own saves (`nand/title/00010000/<title ID>/data`), as on a
+real Wii.
 
 ## Controls (default)
 
@@ -79,17 +87,21 @@ connection for the first configure (it downloads [nod](https://github.com/encoun
 Dear ImGui). `tools/dev_build.bat` sets up the Visual Studio environment and builds.
 
 1. Configure and build the installer: `tools\dev_build.bat`
-2. Install the game data: `out\srr_install path\to\RSRE8P.iso`
-3. Generate the recompiled sources: `python tools/build_generated.py`
-   (pass `--dsy <Dolphin>/Sys/totaldb.dsy` with `--reanalyze` to rematch SDK names)
-4. Build the game: `tools\dev_build.bat` → `out\SecretRingsRecomp.exe`
+2. Install the game data: `out\srr_install path\to\image` (any of the three releases)
+3. Extract the build inputs of the releases you did not install into `game/inputs/`:
+   `out\srr_install --build-inputs path\to\other-image`. The USA or Japanese main.dol is
+   required. Without the European one, the exe runs only the USA and Japanese releases.
+4. Generate the recompiled sources: `python tools/build_generated.py` (`generated/`, plus
+   `generated/eu/` for the European build). To rematch SDK names, pass
+   `--dsy <Dolphin>/Sys/totaldb.dsy` with `--reanalyze`.
+5. Build the game: `tools\dev_build.bat` → `out\SecretRingsRecomp.exe`
 
 ## Settings
 
 `config.ini` next to the executable (also editable in the launcher and the in-game
 overlay): `frame_rate` (30 original, or 60: game logic is delta-timed, so speeds and jumps
 measure the same), `internal_scale`, window/fullscreen/vsync, anisotropy, texture packs
-(`textures/RSRE8P/...`), language, rumble, Wii Remote speaker, `tilt_range`, `tilt_sign`
+(`textures/RSR/...` for every release, or `textures/<game ID>/...`), language, rumble, Wii Remote speaker, `tilt_range`, `tilt_sign`
 and the button/keyboard bindings.
 
 ## Testing

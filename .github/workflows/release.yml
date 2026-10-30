@@ -37,6 +37,12 @@ jobs:
           Copy-Item private-inputs/sys/main.dol game/extracted/DATA/sys/
           Copy-Item private-inputs/files/SONICRINGS.sel, private-inputs/files/hbm_part.rso game/extracted/DATA/files/
           if (Test-Path private-inputs/mem2_dump.bin) { Copy-Item private-inputs/mem2_dump.bin out/ }
+          # the European release's main.dol (a separate build), optional
+          if (Test-Path private-inputs/RSRP8P/sys/main.dol) {
+            New-Item -ItemType Directory -Force game/inputs/RSRP8P/sys, game/inputs/RSRP8P/files | Out-Null
+            Copy-Item private-inputs/RSRP8P/sys/main.dol game/inputs/RSRP8P/sys/
+            Copy-Item private-inputs/RSRP8P/files/SONICRINGS.sel game/inputs/RSRP8P/files/
+          }
           Remove-Item -Recurse -Force private-inputs
 
       - uses: actions/setup-python@v5
@@ -71,10 +77,11 @@ jobs:
         run: |
           # one line per paragraph: release notes keep single line breaks. Edit the notes on
           # the release page afterwards to add what changed.
+          $versions = if (Test-Path generated/eu) { "the USA (RSRE8P), European (RSRP8P) or Japanese (RSRJ8P) version" } else { "the USA (RSRE8P) or Japanese (RSRJ8P) version" }
           $notes = @"
           Sonic and the Secret Rings (Wii), statically recompiled to run natively on Windows.
 
-          **This release contains no game data.** You need your own copy of the USA version (RSRE8P) as a disc image: ISO, RVZ, WIA or WBFS. Unzip, start ``SecretRingsRecomp.exe`` and select the image when the launcher asks; the game data is installed next to the exe.
+          **This release contains no game data.** You need your own copy of $versions as a disc image: ISO, RVZ, WIA or WBFS. Unzip, start ``SecretRingsRecomp.exe`` and select the image when the launcher asks; the game data is installed next to the exe.
 
           See the [README](https://github.com/${{ github.repository }}#readme) for controls and settings.
           "@

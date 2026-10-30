@@ -3,6 +3,7 @@
 #include "../cpu/cpu.h"
 #include "../kernel/scheduler.h"
 #include "../log.h"
+#include "../region.h"
 
 static uint16_t s_regs[0x80];   // 0x100 bytes of 16-bit registers
 static uint64_t s_t0;           // timebase at half-line 0 of the current timing config
@@ -174,7 +175,7 @@ void VI_Init()
 {
     // State left behind by the system menu (Dolphin's VideoInterface::Preset).
     R(0x00) = 6;                                   // EQU=6, ACV=0
-    R(0x02) = 0x0001;                              // ENB, FMT=NTSC
+    R(0x02) = g_release->pal ? 0x0101 : 0x0001;    // ENB, FMT=PAL or NTSC
     R(0x04) = (uint16_t)(105 | (71 << 8));         // HCE, HCS
     R(0x06) = 429;                                 // HLW
     {

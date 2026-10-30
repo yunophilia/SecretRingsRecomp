@@ -4,6 +4,16 @@ Every guest function becomes extern "C" void fn_XXXXXXXX(PPCContext& ctx, uint8_
 
 unless the runtime overrides it (listed in out/overrides.txt), in which case the body is
 emitted as fn_XXXXXXXX_impl so the runtime version can still call the original.
+
+  recomp.py main.dol functions.json outdir [overrides.txt] [--prefix eu_]
+
+--prefix: another build of the game (tools/regions.py). Its functions are named
+<prefix>fn_XXXXXXXX, its table is PPCFuncMappings_<prefix> and its source list
+PPC_RECOMP_SOURCES_<PREFIX>. The runtime names its overrides by the base build's
+addresses, so this build's overrides file has "address base-address" lines: calls go to
+the runtime's fn_<base-address>, and the original body becomes
+<prefix>fn_<base-address>_impl. "P address base-address" lines place the base build's
+PATCHES.
 """
 import json
 import os
@@ -88,12 +98,12 @@ class FuncGen:
 
     def call(self, target, ret_addr):
         self.calls.add(target)
-        self.emit(f'ctx.lr = {h(ret_addr)}; fn_{target:08X}(ctx, base);')
+        self.emit(f'ctx.lr = {h(ret_addr)}; {self.rc.sym(target)}(ctx, base);')
 
     def tailcall(self, target):
         if self.rc.is_func(target):
             self.calls.add(target)
-            return f'{{ fn_{target:08X}(ctx, base); return; }}'
+            return f'{{ {self.rc.sym(target)}(ctx, base); return; }}'
         return f'{{ PPC_CALL_INDIRECT({h(target)}); return; }}'
 
     def cond(self, bo, bi):
@@ -142,17 +152,17 @@ class FuncGen:
         name = self.f.get('name')
         hdr = f'// {name}\n' if name else ''
         macro = 'PPC_FUNC_IMPL' if self.start in self.rc.overrides else 'PPC_FUNC'
-        if any(self.start <= pa < self.end for pa in PATCHES):
+        if any(self.start <= pa < self.end for pa in self.rc.patches):
             hdr = 'extern "C" uint32_t g_cfgFrameRate;\n' + hdr
-        return hdr + f'{macro}(fn_{self.start:08X}) {{\n\tPPC_FUNC_PROLOGUE(); PPC_COUNT_CALL(0x{self.start:08X});\n' + '\n'.join(body) + '\n}\n'
+        return hdr + f'{macro}({self.rc.def_sym(self.start)}) {{\n\tPPC_FUNC_PROLOGUE(); PPC_COUNT_CALL(0x{self.start:08X});\n' + '\n'.join(body) + '\n}\n'
 
     def insn(self, a, i):
         """Emit one instruction. Returns True if control never falls through."""
         if a in PROBES:
             n, reg = PROBES[a]
             self.emit(f'g_tasProbe[{n}] = ctx.r[{reg}];   // read-only test probe')
-        if a in PATCHES:
-            self.emit(PATCHES[a])
+        if a in self.rc.patches:
+            self.emit(self.rc.patches[a])
             return False
         op = i.op
         e = self.emit
@@ -179,7 +189,7 @@ class FuncGen:
             if i.lk:
                 if self.rc.is_func(t):
                     self.calls.add(t)
-                    e(f'{pre}if ({c}) {{ ctx.lr = {h(nxt)}; fn_{t:08X}(ctx, base); }}')
+                    e(f'{pre}if ({c}) {{ ctx.lr = {h(nxt)}; {self.rc.sym(t)}(ctx, base); }}')
                 else:
                     e(f'{pre}if ({c}) {{ ctx.lr = {h(nxt)}; PPC_CALL_INDIRECT({h(t)}); }}')
                 return False
@@ -780,11 +790,27 @@ def write_if_changed(path, text):
 
 
 class Recompiler:
-    def __init__(self, dol, funcs, overrides=()):
+    def __init__(self, dol, funcs, overrides=(), prefix='', patches=None):
         self.dol = dol
         self.funcs = funcs
         self.starts = {f['start'] for f in funcs}
-        self.overrides = set(overrides)
+        # overridden function -> the base build's address the runtime names it by
+        self.ovr_base = overrides if isinstance(overrides, dict) else {a: a for a in overrides}
+        self.overrides = set(self.ovr_base)
+        self.prefix = prefix
+        self.patches = PATCHES if patches is None else patches
+
+    def sym(self, a):
+        """What a call to the function at a calls: the runtime's override, or the recompiled code."""
+        if a in self.ovr_base:
+            return f'fn_{self.ovr_base[a]:08X}'
+        return f'{self.prefix}fn_{a:08X}'
+
+    def def_sym(self, a):
+        """Name of the recompiled body of the function at a (plus _impl if overridden)."""
+        if a in self.ovr_base:
+            return f'{self.prefix}fn_{self.ovr_base[a]:08X}'
+        return f'{self.prefix}fn_{a:08X}'
 
     def is_func(self, a):
         return a in self.starts
@@ -814,12 +840,15 @@ class Recompiler:
 
         hdr = ['#pragma once\n#include "ppc_context.h"\n\n']
         for f in self.funcs:
-            hdr.append(f'PPC_EXTERN_FUNC(fn_{f["start"]:08X}); PPC_EXTERN_FUNC(fn_{f["start"]:08X}_impl);\n')
+            a = f['start']
+            hdr.append(f'PPC_EXTERN_FUNC({self.sym(a)}); PPC_EXTERN_FUNC({self.def_sym(a)}_impl);\n')
         write_if_changed(os.path.join(outdir, 'ppc_recomp_shared.h'), ''.join(hdr))
 
-        m = ['#include "ppc_recomp_shared.h"\n\nextern "C" const PPCFuncMapping PPCFuncMappings[] = {\n']
+        suffix = self.prefix.rstrip('_')
+        table = 'PPCFuncMappings' + (f'_{suffix}' if suffix else '')
+        m = [f'#include "ppc_recomp_shared.h"\n\nextern "C" const PPCFuncMapping {table}[] = {{\n']
         for f in self.funcs:
-            m.append(f'\t{{ 0x{f["start"]:08X}, fn_{f["start"]:08X} }},\n')
+            m.append(f'\t{{ 0x{f["start"]:08X}, {self.sym(f["start"])} }},\n')
         m.append('\t{ 0, nullptr }\n};\n')
         write_if_changed(os.path.join(outdir, 'ppc_func_mapping.cpp'), ''.join(m))
 
@@ -836,7 +865,7 @@ class Recompiler:
             sym.append(f'#define SYM_{cid} 0x{f["start"]:08X}\n')
         write_if_changed(os.path.join(outdir, 'ppc_symbols.h'), ''.join(sym))
 
-        src = ['set(PPC_RECOMP_SOURCES\n']
+        src = ['set(PPC_RECOMP_SOURCES' + (f'_{suffix.upper()}' if suffix else '') + '\n']
         for n in files + ['ppc_func_mapping.cpp']:
             src.append(f'\t${{CMAKE_CURRENT_LIST_DIR}}/{n}\n')
         src.append(')\n')
@@ -845,16 +874,30 @@ class Recompiler:
 
 
 if __name__ == '__main__':
+    prefix = ''
+    if '--prefix' in sys.argv:
+        i = sys.argv.index('--prefix')
+        prefix = sys.argv[i + 1]
+        del sys.argv[i:i + 2]
     dol = Dol(sys.argv[1])
     funcs = json.load(open(sys.argv[2]))
-    overrides = []
+    overrides, patches = [], None
     if len(sys.argv) > 4:
-        overrides = [int(x, 16) for x in open(sys.argv[4]).read().split()]
+        if prefix:
+            overrides, patches = {}, {}
+            for line in open(sys.argv[4]).read().splitlines():
+                p = line.split()
+                if p and p[0] == 'P':
+                    patches[int(p[1], 16)] = PATCHES[int(p[2], 16)]
+                elif p:
+                    overrides[int(p[0], 16)] = int(p[1], 16)
+        else:
+            overrides = [int(x, 16) for x in open(sys.argv[4]).read().split()]
     # Optional: the linked HOME menu module (see tools/rso.py), appended as an extra
     # text section; the runtime only uses it after checking the code in memory.
     rso_info = os.path.join(os.path.dirname(sys.argv[2]), 'rso_info.json')
     rso = None
-    if os.path.exists(rso_info):
+    if os.path.exists(rso_info) and not prefix:
         from dol import Section
         rso = json.load(open(rso_info))
         img = open(os.path.join(os.path.dirname(sys.argv[2]), 'rso_image.bin'), 'rb').read()
@@ -866,6 +909,6 @@ if __name__ == '__main__':
         info.append(f'#define PPC_RSO_TEXT_BEGIN 0x{rso["text"]:08X}u\n#define PPC_RSO_TEXT_END 0x{rso["text"] + rso["size"]:08X}u\n'
                     f'#define PPC_RSO_TEXT_HASH 0x{rso["hash"]:016X}ull\n')
     write_if_changed(os.path.join(sys.argv[3], 'ppc_rso_info.h'), ''.join(info))
-    rc = Recompiler(dol, funcs, overrides)
+    rc = Recompiler(dol, funcs, overrides, prefix, patches)
     files = rc.run(sys.argv[3])
     print(f'wrote {len(files)} source files ({len(overrides)} overrides)', file=sys.stderr)

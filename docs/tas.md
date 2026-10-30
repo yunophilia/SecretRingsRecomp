@@ -71,7 +71,7 @@ COND: `file TEXT` (a disc file whose path contains TEXT was read since the last
 EXPR: hex address, probe `p0`..`p15`, `+`/`-` offsets and `[expr]` to read a pointer,
 e.g. `[80803e10]+2050`. Unmapped addresses read as missing values.
 
-## Known addresses (RSRE8P)
+## Known addresses (USA/Japan build: RSRE8P, RSRJ8P)
 
 | what | expression |
 |---|---|
@@ -81,3 +81,5 @@ e.g. `[80803e10]+2050`. Unmapped addresses read as missing values.
 | KPAD channel 0 state | `80692b60` (stride 2104) |
 
 The heap addresses hold for the fresh-save boot path above; other routes may differ.
+The European build (RSRP8P) has its static data 0x40 bytes lower (KPAD channel 0 at
+`80692b20`).
