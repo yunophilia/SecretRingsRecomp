@@ -54,7 +54,8 @@ Run `SecretRingsRecomp.exe`. On first run it asks for your own disc image of the
 All three releases have the same game data, with the same six languages. The USA and
 Japanese discs share one executable. The European disc has its own build of it: the same
 code at slightly different addresses, minus a cap at 999 on one counter that the USA build
-has. It is recompiled separately and included in the same exe. The emulated Wii matches
+has. Both builds are recompiled together and share one copy of the code: where they
+differ only in an address, the code picks the value for the running release. The emulated Wii matches
 the disc: an NTSC console for USA and Japan, and a PAL console with EuRGB60 (60 Hz) for
 Europe. Each release keeps its own saves (`nand/title/00010000/<title ID>/data`), as on a
 real Wii.

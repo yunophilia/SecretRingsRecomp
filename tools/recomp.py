@@ -5,18 +5,19 @@ Every guest function becomes extern "C" void fn_XXXXXXXX(PPCContext& ctx, uint8_
 unless the runtime overrides it (listed in out/overrides.txt), in which case the body is
 emitted as fn_XXXXXXXX_impl so the runtime version can still call the original.
 
-  recomp.py main.dol functions.json outdir [overrides.txt] [--prefix eu_]
+  recomp.py main.dol functions.json outdir [overrides.txt] [--eu main.dol functions.json outdir]
 
---prefix: another build of the game (tools/regions.py). Its functions are named
-<prefix>fn_XXXXXXXX, its table is PPCFuncMappings_<prefix> and its source list
-PPC_RECOMP_SOURCES_<PREFIX>. The runtime names its overrides by the base build's
-addresses, so this build's overrides file has "address base-address" lines: calls go to
-the runtime's fn_<base-address>, and the original body becomes
-<prefix>fn_<base-address>_impl. "P address base-address" lines place the base build's
-PATCHES.
+--eu: the European build of the game (tools/regions.py), recompiled together with the
+base (USA/Japan) one. Its functions that match a base function share that function's
+code and name: values that differ between the builds (data and return addresses,
+callees) are written PPC_SEL(base, european), picked at run time. Matched functions
+whose code cannot be shared that way, and the European build's own functions, are
+emitted as eu_fn_XXXXXXXX into the European output directory, with that build's
+dispatch table (PPCFuncMappings_eu) and source list (PPC_RECOMP_SOURCES_EU).
 """
 import json
 import os
+import re
 import sys
 
 from dol import Dol
@@ -56,6 +57,9 @@ class FuncGen:
         self.out = []
         self.labels = set()
         self.calls = set()
+        # added to this build's code addresses in labels and jump-table cases: the
+        # European code is named by the USA build's addresses to share its code
+        self.delta = 0
 
     def inside(self, t):
         return self.start <= t < self.end
@@ -121,11 +125,12 @@ class FuncGen:
         if self.inside(t):
             self.labels.add(t)
             chk = 'PPC_CHECK_IRQ(); ' if t <= a else ''
-            return f'{{ {chk}goto loc_{t:08X}; }}'
+            return f'{{ {chk}goto loc_{t + self.delta:08X}; }}'
         return self.tailcall(t)
 
     # ---------------------------------------------------------------- main
-    def gen(self):
+    def gen_body(self):
+        """The function's statements (one entry per instruction)."""
         # first pass: labels
         for a in range(self.start, self.end, 4):
             ins = decode(self.dol.read32(a))
@@ -143,23 +148,33 @@ class FuncGen:
         for a in range(self.start, self.end, 4):
             w = self.dol.read32(a)
             if a in self.labels:
-                body.append(f'loc_{a:08X}:')
+                body.append(f'loc_{a + self.delta:08X}:')
             ins = decode(w)
             last_term = self.insn(a, ins)
         if not last_term:
             # falls through into the next function
             self.emit(self.tailcall(self.end))
+        return body
+
+    def gen(self, body=None, pre=''):
+        """The C++ function: body (default gen_body()), after the statement pre."""
+        if body is None:
+            body = self.gen_body()
         name = self.f.get('name')
         hdr = f'// {name}\n' if name else ''
         macro = 'PPC_FUNC_IMPL' if self.start in self.rc.overrides else 'PPC_FUNC'
         if any(self.start <= pa < self.end for pa in self.rc.patches):
             hdr = 'extern "C" uint32_t g_cfgFrameRate;\n' + hdr
-        return hdr + f'{macro}({self.rc.def_sym(self.start)}) {{\n\tPPC_FUNC_PROLOGUE(); PPC_COUNT_CALL(0x{self.start:08X});\n' + '\n'.join(body) + '\n}\n'
+        prologue = 'PPC_FUNC_PROLOGUE();'
+        if any('PPC_SEL(' in s for s in body):
+            prologue += ' PPC_SEL_PROLOGUE();'
+        return (hdr + f'{macro}({self.rc.def_sym(self.start)}) {{\n\t{prologue} PPC_COUNT_CALL(0x{self.start:08X});\n'
+                + pre + '\n'.join(body) + '\n}\n')
 
     def insn(self, a, i):
         """Emit one instruction. Returns True if control never falls through."""
-        if a in PROBES:
-            n, reg = PROBES[a]
+        if a in self.rc.probes:
+            n, reg = self.rc.probes[a]
             self.emit(f'g_tasProbe[{n}] = ctx.r[{reg}];   // read-only test probe')
         if a in self.rc.patches:
             self.emit(self.rc.patches[a])
@@ -214,9 +229,10 @@ class FuncGen:
                 e(f'{pre}if ({c}) {{ ctx.lr = {h(nxt)}; PPC_CALL_INDIRECT(ctx.ctr); }}')
                 return False
             if a in self.jt:
-                lines = [f'switch (ctx.ctr) {{']
+                sw = f'(uint32_t)(ctx.ctr + {h(self.delta)})' if self.delta else 'ctx.ctr'
+                lines = [f'switch ({sw}) {{']
                 for t in sorted(set(self.jt[a])):
-                    lines.append(f'\tcase {h(t)}: {self.goto(a, t)}')
+                    lines.append(f'\tcase {h(t + self.delta)}: {self.goto(a, t)}')
                 lines.append(f'\tdefault: {{ PPC_CALL_INDIRECT(ctx.ctr); return; }}')
                 lines.append('\t}')
                 body = '\n\t'.join(lines)
@@ -789,68 +805,131 @@ def write_if_changed(path, text):
     return True
 
 
+# Statements of two builds' versions of a function merge when they differ only in
+# values: numbers (data and return addresses) and callees.
+TOKEN = re.compile(r'0x[0-9A-Fa-f]+u?|-?\d+u?|\w+|\s+|.', re.S)
+NUMBER = re.compile(r'-?(?:0x[0-9A-Fa-f]+|\d+)u?$')
+CALLEE = re.compile(r'(?:eu_)?fn_[0-9A-F]{8}$')
+EU_SWITCH = re.compile(r'switch \(\(uint32_t\)\(ctx\.ctr \+ (0x[0-9A-F]+)\)\)')
+
+
+def merge_stmt(a, b):
+    """One statement for both builds (b: the European one), or None."""
+    if a == b:
+        return a
+    sw = EU_SWITCH.search(b)
+    if sw:   # jump table: the European ctr is mapped onto the shared case labels
+        b = b.replace(sw[0], 'switch (ctx.ctr)', 1)
+    ta, tb = TOKEN.findall(a), TOKEN.findall(b)
+    if len(ta) != len(tb):
+        return None
+    out = []
+    for x, y in zip(ta, tb):
+        if x == y:
+            out.append(x)
+        elif (NUMBER.match(x) and NUMBER.match(y)) or (CALLEE.match(x) and CALLEE.match(y)):
+            out.append(f'PPC_SEL({x}, {y})')
+        else:
+            return None
+    s = ''.join(out)
+    if 'case PPC_SEL(' in s:   # a jump-table target in another function: no constant
+        return None
+    if sw:
+        s = s.replace('switch (ctx.ctr)', f'switch (PPC_SEL(ctx.ctr, (uint32_t)(ctx.ctr + {sw[1]})))', 1)
+    return s
+
+
+def merge_body(a, b):
+    if len(a) != len(b):
+        return None
+    out = []
+    for x, y in zip(a, b):
+        m = merge_stmt(x, y)
+        if m is None:
+            return None
+        out.append(m)
+    return out
+
+
 class Recompiler:
-    def __init__(self, dol, funcs, overrides=(), prefix='', patches=None):
+    def __init__(self, dol, funcs, overrides=(), patches=None, probes=None, prefix='', names=None):
         self.dol = dol
         self.funcs = funcs
         self.starts = {f['start'] for f in funcs}
-        # overridden function -> the base build's address the runtime names it by
-        self.ovr_base = overrides if isinstance(overrides, dict) else {a: a for a in overrides}
-        self.overrides = set(self.ovr_base)
-        self.prefix = prefix
+        self.overrides = set(overrides)
         self.patches = PATCHES if patches is None else patches
+        self.probes = PROBES if probes is None else probes
+        self.prefix = prefix
+        self.names = names or {}   # function start -> name its callers use, if not def_sym
 
     def sym(self, a):
         """What a call to the function at a calls: the runtime's override, or the recompiled code."""
-        if a in self.ovr_base:
-            return f'fn_{self.ovr_base[a]:08X}'
-        return f'{self.prefix}fn_{a:08X}'
+        return self.names.get(a) or self.def_sym(a)
 
     def def_sym(self, a):
         """Name of the recompiled body of the function at a (plus _impl if overridden)."""
-        if a in self.ovr_base:
-            return f'{self.prefix}fn_{self.ovr_base[a]:08X}'
         return f'{self.prefix}fn_{a:08X}'
 
     def is_func(self, a):
         return a in self.starts
 
-    def run(self, outdir, per_file=6000):
-        os.makedirs(outdir, exist_ok=True)
+    def run(self, outdir, eu=None, per_file=6000):
+        """eu: (Recompiler of the European build, {start: European start} of matched
+        functions, its output directory). A matched pair is emitted once, under the base
+        build's name, when the two merge; otherwise the shared name runs the European
+        body (eu_fn_<European start>) in that release."""
+        eu_rc, match, eu_dir = eu if eu else (None, {}, None)
+        eu_own = []
+        shared = 0
         files = []
         chunk, count, idx = [], 0, 0
 
-        def flush():
+        def flush(d, fl, include):
             nonlocal chunk, count, idx
             if not chunk:
                 return
             name = f'ppc_recomp.{idx}.cpp'
-            write_if_changed(os.path.join(outdir, name), '#include "ppc_recomp_shared.h"\n\n' + ''.join(chunk))
-            files.append(name)
+            write_if_changed(os.path.join(d, name), f'#include "{include}"\n\n' + ''.join(chunk))
+            fl.append(name)
             chunk, count = [], 0
             idx += 1
 
         for f in self.funcs:
             g = FuncGen(self, f)
-            chunk.append(g.gen() + '\n')
+            e = match.get(f['start'])
+            if e is None:
+                text = g.gen()
+            else:
+                ef = eu_rc.func_at[e]
+                eg = FuncGen(eu_rc, ef)
+                eg.delta = f['start'] - e
+                body = g.gen_body()
+                merged = merge_body(body, eg.gen_body())
+                if merged is not None:
+                    text = g.gen(merged)
+                    shared += 1
+                else:
+                    text = g.gen(body, f'\tif (g_ppcEuCode) {{ {eu_rc.def_sym(e)}(ctx, base); return; }}\n')
+                    eu_own.append(ef)
+            chunk.append(text + '\n')
             count += (f['end'] - f['start']) // 4
             if count >= per_file:
-                flush()
-        flush()
+                flush(outdir, files, 'ppc_recomp_shared.h')
+        flush(outdir, files, 'ppc_recomp_shared.h')
 
         hdr = ['#pragma once\n#include "ppc_context.h"\n\n']
         for f in self.funcs:
             a = f['start']
             hdr.append(f'PPC_EXTERN_FUNC({self.sym(a)}); PPC_EXTERN_FUNC({self.def_sym(a)}_impl);\n')
+        if eu:
+            matched = set(match.values())
+            eu_own += [f for f in eu_rc.funcs if f['start'] not in matched]
+            eu_own.sort(key=lambda f: f['start'])
+            for f in eu_own:
+                hdr.append(f'PPC_EXTERN_FUNC({eu_rc.def_sym(f["start"])});\n')
         write_if_changed(os.path.join(outdir, 'ppc_recomp_shared.h'), ''.join(hdr))
 
-        suffix = self.prefix.rstrip('_')
-        table = 'PPCFuncMappings' + (f'_{suffix}' if suffix else '')
-        m = [f'#include "ppc_recomp_shared.h"\n\nextern "C" const PPCFuncMapping {table}[] = {{\n']
-        for f in self.funcs:
-            m.append(f'\t{{ 0x{f["start"]:08X}, {self.sym(f["start"])} }},\n')
-        m.append('\t{ 0, nullptr }\n};\n')
-        write_if_changed(os.path.join(outdir, 'ppc_func_mapping.cpp'), ''.join(m))
+        write_table(self, outdir, 'PPCFuncMappings', 'ppc_recomp_shared.h')
 
         sym = ['#pragma once\n// Known symbol addresses\n']
         seen = set()
@@ -864,40 +943,89 @@ class Recompiler:
             seen.add(cid)
             sym.append(f'#define SYM_{cid} 0x{f["start"]:08X}\n')
         write_if_changed(os.path.join(outdir, 'ppc_symbols.h'), ''.join(sym))
+        write_sources(outdir, files, '')
 
-        src = ['set(PPC_RECOMP_SOURCES' + (f'_{suffix.upper()}' if suffix else '') + '\n']
-        for n in files + ['ppc_func_mapping.cpp']:
-            src.append(f'\t${{CMAKE_CURRENT_LIST_DIR}}/{n}\n')
-        src.append(')\n')
-        write_if_changed(os.path.join(outdir, 'sources.cmake'), ''.join(src))
+        if eu:
+            eu_files, idx = [], 0
+            for f in eu_own:
+                chunk.append(FuncGen(eu_rc, f).gen() + '\n')
+                count += (f['end'] - f['start']) // 4
+                if count >= per_file:
+                    flush(eu_dir, eu_files, '../ppc_recomp_shared.h')
+            flush(eu_dir, eu_files, '../ppc_recomp_shared.h')
+            write_table(eu_rc, eu_dir, 'PPCFuncMappings_eu', '../ppc_recomp_shared.h')
+            write_sources(eu_dir, eu_files, '_EU')
+            keep = set(eu_files) | {'ppc_func_mapping.cpp', 'sources.cmake'}
+            for n in os.listdir(eu_dir):   # earlier layouts generated more here
+                if n not in keep:
+                    os.remove(os.path.join(eu_dir, n))
+            print(f'European build: {shared} functions shared with the base build, '
+                  f'{len(eu_own)} of its own', file=sys.stderr)
         return files
 
 
+def write_table(rc, outdir, table, include):
+    m = [f'#include "{include}"\n\nextern "C" const PPCFuncMapping {table}[] = {{\n']
+    for f in rc.funcs:
+        m.append(f'\t{{ 0x{f["start"]:08X}, {rc.sym(f["start"])} }},\n')
+    m.append('\t{ 0, nullptr }\n};\n')
+    write_if_changed(os.path.join(outdir, 'ppc_func_mapping.cpp'), ''.join(m))
+
+
+def write_sources(outdir, files, suffix):
+    src = [f'set(PPC_RECOMP_SOURCES{suffix}\n']
+    for n in files + ['ppc_func_mapping.cpp']:
+        src.append(f'\t${{CMAKE_CURRENT_LIST_DIR}}/{n}\n')
+    src.append(')\n')
+    write_if_changed(os.path.join(outdir, 'sources.cmake'), ''.join(src))
+
+
+def european_build(dol, funcs, overrides, eu_dol_path, eu_funcs_path):
+    """Recompiler for the European main.dol and its {base start: European start} matches.
+    Its matched functions are called by the base build's names (the runtime's overrides
+    included); the rest are eu_fn_<address>."""
+    from regions import AddrMap, match_functions
+    eu_dol = Dol(eu_dol_path)
+    eu_funcs = json.load(open(eu_funcs_path))
+    match = match_functions(dol, funcs, eu_dol, eu_funcs)
+    amap = AddrMap(funcs, match)
+    missing = [a for a in overrides if dol.is_text(a) and a not in match]
+    patches = {}
+    for a, s in PATCHES.items():
+        m = amap(a)
+        if m is None:
+            missing.append(a)
+        else:
+            patches[m] = s
+    if missing:
+        sys.exit('no European counterpart for: ' + ' '.join(f'{a:08X}' for a in missing))
+    probes = {amap(a): p for a, p in PROBES.items() if amap(a) is not None}
+    rc = Recompiler(eu_dol, eu_funcs, (), patches, probes, 'eu_', {e: f'fn_{b:08X}' for b, e in match.items()})
+    rc.func_at = {f['start']: f for f in eu_funcs}
+    return rc, match
+
+
 if __name__ == '__main__':
-    prefix = ''
-    if '--prefix' in sys.argv:
-        i = sys.argv.index('--prefix')
-        prefix = sys.argv[i + 1]
-        del sys.argv[i:i + 2]
+    eu_args = None
+    if '--eu' in sys.argv:
+        i = sys.argv.index('--eu')
+        eu_args = sys.argv[i + 1:i + 4]
+        del sys.argv[i:i + 4]
     dol = Dol(sys.argv[1])
     funcs = json.load(open(sys.argv[2]))
-    overrides, patches = [], None
+    overrides = []
     if len(sys.argv) > 4:
-        if prefix:
-            overrides, patches = {}, {}
-            for line in open(sys.argv[4]).read().splitlines():
-                p = line.split()
-                if p and p[0] == 'P':
-                    patches[int(p[1], 16)] = PATCHES[int(p[2], 16)]
-                elif p:
-                    overrides[int(p[0], 16)] = int(p[1], 16)
-        else:
-            overrides = [int(x, 16) for x in open(sys.argv[4]).read().split()]
+        overrides = [int(x, 16) for x in open(sys.argv[4]).read().split()]
+    eu = None
+    if eu_args:
+        eu_rc, match = european_build(dol, funcs, overrides, eu_args[0], eu_args[1])
+        eu = (eu_rc, match, eu_args[2])
+        os.makedirs(eu_args[2], exist_ok=True)
     # Optional: the linked HOME menu module (see tools/rso.py), appended as an extra
     # text section; the runtime only uses it after checking the code in memory.
     rso_info = os.path.join(os.path.dirname(sys.argv[2]), 'rso_info.json')
     rso = None
-    if os.path.exists(rso_info) and not prefix:
+    if os.path.exists(rso_info):
         from dol import Section
         rso = json.load(open(rso_info))
         img = open(os.path.join(os.path.dirname(sys.argv[2]), 'rso_image.bin'), 'rb').read()
@@ -909,6 +1037,6 @@ if __name__ == '__main__':
         info.append(f'#define PPC_RSO_TEXT_BEGIN 0x{rso["text"]:08X}u\n#define PPC_RSO_TEXT_END 0x{rso["text"] + rso["size"]:08X}u\n'
                     f'#define PPC_RSO_TEXT_HASH 0x{rso["hash"]:016X}ull\n')
     write_if_changed(os.path.join(sys.argv[3], 'ppc_rso_info.h'), ''.join(info))
-    rc = Recompiler(dol, funcs, overrides, prefix, patches)
-    files = rc.run(sys.argv[3])
+    rc = Recompiler(dol, funcs, overrides)
+    files = rc.run(sys.argv[3], eu)
     print(f'wrote {len(files)} source files ({len(overrides)} overrides)', file=sys.stderr)

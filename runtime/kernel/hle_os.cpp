@@ -119,16 +119,13 @@ PPC_FUNC(fn_8052ADC0)
 
 #include "scheduler.h"
 
-// original code of overrides that run it (PPC_CALL_IMPL)
-PPC_IMPL_DECL(fn_8053BA1C);
-
 // u32 VIGetRetraceCount(void). The game paces frames by spinning on this until enough
 // retraces have passed; once the value stops changing, sleep until the next interrupt
 // instead of burning a host core.
 PPC_FUNC(fn_8053BA1C)
 {
     static uint32_t last = ~0u, repeats = 0;
-    PPC_CALL_IMPL(fn_8053BA1C);
+    fn_8053BA1C_impl(ctx, base);
     if (ctx.r[3] != last)
     {
         last = ctx.r[3];

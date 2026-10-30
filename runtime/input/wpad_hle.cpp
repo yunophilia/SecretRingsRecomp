@@ -20,9 +20,6 @@
 #include <windows.h>
 #include <Xinput.h>
 
-// original code of overrides that run it (PPC_CALL_IMPL)
-PPC_IMPL_DECL(fn_80558E4C);
-
 namespace
 {
 enum : int32_t
@@ -386,7 +383,7 @@ PPC_FUNC(fn_802B0E30) { ctx.r[3] = 100; }
 PPC_FUNC(fn_80558E4C)
 {
     WPAD_Pump(ctx, base);
-    PPC_CALL_IMPL(fn_80558E4C);
+    fn_80558E4C_impl(ctx, base);
 }
 
 // s32 WPADSetDataFormat(s32 chan, u32 fmt)

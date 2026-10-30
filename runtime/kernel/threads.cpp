@@ -12,11 +12,6 @@
 #include <vector>
 #include <windows.h>
 
-// original code of overrides that run it (PPC_CALL_IMPL)
-PPC_IMPL_DECL(fn_80528974);
-PPC_IMPL_DECL(fn_80528B58);
-PPC_IMPL_DECL(fn_8052C2A0);
-
 GuestThread* g_curThread = nullptr;
 static GuestThread s_mainThread;
 static std::unordered_map<uint32_t, GuestThread*> s_byContext;
@@ -117,7 +112,7 @@ static GuestThread* CreateFromContext(uint32_t oc)
 PPC_FUNC(fn_80528974)
 {
     uint32_t oc = ctx.r[3];
-    PPC_CALL_IMPL(fn_80528974);
+    fn_80528974_impl(ctx, base);
     auto it = s_byContext.find(oc);
     if (it != s_byContext.end() && it->second != g_curThread)
     {
@@ -166,7 +161,7 @@ PPC_FUNC(fn_80528B58)
             s_graveyard.push_back(old);
         }
     }
-    PPC_CALL_IMPL(fn_80528B58);
+    fn_80528B58_impl(ctx, base);
 }
 
 // OSEnableInterrupts: when called with no current thread we are in the scheduler's
@@ -175,7 +170,7 @@ PPC_FUNC(fn_8052C2A0)
 {
     if (Read32(ADDR_OS_CURRENT_THREAD) == 0)
         Sched_IdleWait();
-    PPC_CALL_IMPL(fn_8052C2A0);
+    fn_8052C2A0_impl(ctx, base);
 }
 
 // ------------------------------------------------------------- exceptions

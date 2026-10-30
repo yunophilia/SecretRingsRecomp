@@ -97,8 +97,8 @@ if(NOT EXISTS ${CMAKE_SOURCE_DIR}/generated/sources.cmake)
     return()
 endif()
 include(${CMAKE_SOURCE_DIR}/generated/sources.cmake)
-# The European release's main.dol, recompiled separately (eu_ prefix) when
-# tools/build_generated.py had it; the USA and Japanese releases share the base code.
+# The European release's main.dol, when tools/build_generated.py had it: it shares the
+# base (USA/Japan) code, and generated/eu/ has its own few functions and dispatch table.
 if(EXISTS ${CMAKE_SOURCE_DIR}/generated/eu/sources.cmake)
     include(${CMAKE_SOURCE_DIR}/generated/eu/sources.cmake)
     list(APPEND PPC_RECOMP_SOURCES ${PPC_RECOMP_SOURCES_EU})

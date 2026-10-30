@@ -9,6 +9,9 @@ matching, override scan of runtime/ (functions the runtime replaces), code gener
 Code sets:
   base  the USA/Japan main.dol (required)   -> generated/        out/functions.json
   eu    the European main.dol (optional)    -> generated/eu/     out/eu/functions.json
+Both are recompiled together: the European functions that match base ones share their
+code (in generated/), and only the European build's own functions and dispatch table
+go to generated/eu/.
 Each main.dol (with its SONICRINGS.sel) is taken from the installed game data
 (game/extracted/DATA) or from game/inputs/<game ID>/ (sys/main.dol,
 files/SONICRINGS.sel), which `srr_install --build-inputs <image>` writes for the other
@@ -36,12 +39,11 @@ OUT = os.path.join(ROOT, 'out')
 
 sys.path.insert(0, TOOLS)
 from dol import Dol                                                    # noqa: E402
-from regions import CODE_SETS, AddrMap, dol_sha1, match_functions    # noqa: E402
-from recomp import PATCHES                                           # noqa: E402
+from regions import CODE_SETS, dol_sha1, match_functions             # noqa: E402
 
-SETS = {   # code set -> (functions.json, generated dir, recomp prefix)
-    'base': (os.path.join(OUT, 'functions.json'), GEN, ''),
-    'eu': (os.path.join(OUT, 'eu', 'functions.json'), os.path.join(GEN, 'eu'), 'eu_'),
+SETS = {   # code set -> (functions.json, generated dir)
+    'base': (os.path.join(OUT, 'functions.json'), GEN),
+    'eu': (os.path.join(OUT, 'eu', 'functions.json'), os.path.join(GEN, 'eu')),
 }
 
 
@@ -118,19 +120,18 @@ def main():
     # SDK names: rematch with a given totaldb.dsy, else the recorded names
     base_dol, base_sel = inputs['base']
     base_funcs = analyze('base', base_dol, base_sel, find_dsy() or os.path.join(TOOLS, 'sdk_names.txt'))
-    run(os.path.join(TOOLS, 'recomp.py'), base_dol, SETS['base'][0], GEN, ovr_file)
 
     eu_gen = SETS['eu'][1]
     if 'eu' not in inputs:
         if os.path.isdir(eu_gen):
             shutil.rmtree(eu_gen)
         print('no European main.dol: the build supports the USA and Japanese releases only')
+        run(os.path.join(TOOLS, 'recomp.py'), base_dol, SETS['base'][0], GEN, ovr_file)
         return
     eu_dol, eu_sel = inputs['eu']
     eu_path = SETS['eu'][0]
     eu_funcs = analyze('eu', eu_dol, eu_sel, None)
-    bd, ed = Dol(base_dol), Dol(eu_dol)
-    match = match_functions(bd, base_funcs, ed, eu_funcs)
+    match = match_functions(Dol(base_dol), base_funcs, Dol(eu_dol), eu_funcs)
     print(f'European build: {len(match)} of {len(eu_funcs)} functions match the base build')
     names = {f['start']: f['name'] for f in base_funcs if f.get('name')}
     rev = {v: k for k, v in match.items()}
@@ -139,26 +140,8 @@ def main():
             f['name'] = names[rev[f['start']]]
     with open(eu_path, 'w') as fp:
         json.dump(eu_funcs, fp)
-
-    amap = AddrMap(base_funcs, match)
-    lines, missing = [], []
-    for a in ovr:
-        if a in match:
-            lines.append(f'{match[a]:08X} {a:08X}')
-        else:
-            missing.append(a)
-    for a in PATCHES:
-        m = amap(a)
-        if m is None:
-            missing.append(a)
-        else:
-            lines.append(f'P {m:08X} {a:08X}')
-    if missing:
-        sys.exit('no European counterpart for: ' + ' '.join(f'{a:08X}' for a in missing))
-    eu_ovr = os.path.join(OUT, 'eu', 'overrides.txt')
-    with open(eu_ovr, 'w') as fp:
-        fp.write('\n'.join(lines))
-    run(os.path.join(TOOLS, 'recomp.py'), eu_dol, eu_path, eu_gen, eu_ovr, '--prefix', 'eu_')
+    # one recompilation of both builds: matched functions share their code
+    run(os.path.join(TOOLS, 'recomp.py'), base_dol, SETS['base'][0], GEN, ovr_file, '--eu', eu_dol, eu_path, eu_gen)
 
 
 if __name__ == '__main__':

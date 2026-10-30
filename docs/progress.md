@@ -19,9 +19,9 @@
       air time 0.53 s at both rates (tools/tas/speed.tas)
 - [x] Settings: steering tilt range and inversion
 - [x] European (RSRP8P) and Japanese (RSRJ8P) releases: the Japanese main.dol is the USA
-      one; the European build is recompiled as a second code set (`eu_` prefix) and
-      picked at startup from the installed disc; the console region, title ID / save
-      folder and file manifest follow the release
+      one; the European build is recompiled together with it, sharing the code of all
+      but 4 functions, and picked at startup from the installed disc; the console region,
+      title ID / save folder and file manifest follow the release
 - [ ] Party mode minigames (Wii Remote speaker, multiple remotes) — untested
 - [ ] 60 fps in all worlds and Party mode (a 60 fps cheat code is known to break some)
 - [ ] Verify the bloom/glow pass against real hardware or Dolphin (dark halos behind the
@@ -41,9 +41,17 @@ European main.dol differs from the USA one in a single function (0x803E53A0 in t
 build caps a halfword counter at 999; the European build has no cap and is 0x34 bytes
 shorter). Code after it is 0x34 bytes lower, data 0x40 lower (r13 0x8069CC00, r2
 0x806A1520). `tools/regions.py` matches the two builds' functions (21,724 of 21,726
-identical apart from relocated addresses), and `tools/build_generated.py` uses that to
-map the runtime's overrides and patches, which are named by USA addresses. Runtime data
-addresses that differ by build are picked by `g_ppcEuCode` (`threads.cpp`).
+identical apart from relocated addresses). `tools/recomp.py --eu` generates each matched
+pair once, named by the USA address: statements that differ only in a value (data and
+return addresses, callees, the jump-table base) read `PPC_SEL(usa, eu)`, which picks by
+`g_ppcEuCode` (cached in a local per function). 21,722 functions are shared; the
+European build has 4 of its own (`generated/eu/`: the counter function, a data table
+analysed as code, one function where an offset is 0 in one build and not the other, and
+one whose jump table jumps into other functions, which can't be a selected `case`),
+reached through its own dispatch table. The exe is 48 MB (88 MB with two copies, 46 MB
+without the European code). The runtime's overrides and patches
+therefore apply to both. Runtime data addresses that differ by build are picked by
+`g_ppcEuCode` (`threads.cpp`).
 
 ## Porting notes (RSRE8P)
 
