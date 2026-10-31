@@ -23,7 +23,11 @@
       but 4 functions, and picked at startup from the installed disc; the console region,
       title ID / save folder and file manifest follow the release
 - [ ] Party mode minigames (Wii Remote speaker, multiple remotes) — untested
-- [ ] 60 fps in all worlds and Party mode (a 60 fps cheat code is known to break some)
+- [x] 60 fps in every world: the first mission of all seven worlds after Lost Prologue
+      holds 59-60 fps with the same progress as at 30 fps at the same time
+      (`tools/tas/world_*.tas` on a save from `tools/make_test_save.py`)
+- [ ] 60 fps in the other mission types, bosses and Party mode (a 60 fps cheat code,
+      the same change, is reported to break some places)
 - [ ] Verify the bloom/glow pass against real hardware or Dolphin (dark halos behind the
       crystal blocks in Lost Prologue come from a subtractive blend the game really uses)
 - [ ] Recompile the HOME menu module (`hbm_part.rso`, runs in the interpreter for now)

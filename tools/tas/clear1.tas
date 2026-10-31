@@ -1,0 +1,22 @@
+# Clears Lost Prologue, Paragraph 01 (collect 50 rings) from a fresh save and goes through
+# the results so the game saves. The ring count is poked to 49 first (test-save
+# preparation only: poke changes game state).
+include boot_stage1.tas
+wait 5
+poke u32 9102d378 49
+poke u32 9102d37c 49
+poke u32 9102e0e0 49
+poke u32 91efc544 49
+poke u32 91efcdf8 49
+shot clear1_poked
+repeat 5
+mash A 10 2
+end
+shot clear1_results
+repeat 10
+mash B 4 1
+shot clear1_after
+mash A 2 1
+shot clear1_after
+end
+quit

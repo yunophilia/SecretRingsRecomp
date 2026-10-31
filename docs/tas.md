@@ -2,7 +2,8 @@
 
 Scripted runs drive player 1 with controller input timed by the guest clock and read
 game state for telemetry. They never change game code or game data: input goes through
-the normal controller path and telemetry only reads guest memory. While a script runs,
+the normal controller path and telemetry only reads guest memory. The one exception is
+`poke`, which only `clear1.tas` uses to prepare a test save. While a script runs,
 real controllers are ignored, rumble is off and the keyboard is only read when the
 window has focus.
 
@@ -30,6 +31,8 @@ below-normal priority (`-Full` uses the real settings). Game options for scripte
 | `tilt.tas` | brake, then backtracking (remote upside down) and forward tilt |
 | `home_pause.tas` | HOME menu and pause menu during gameplay, with screenshots |
 | `party.tas` | main menu, Party mode setup, character select and the party board |
+| `clear1.tas` | fresh save: clears Lost Prologue, Paragraph 01 (ring count poked to 49) and saves; the start of a test save |
+| `world_<name>.tas` | `allworlds` save: a world's first mission, 45 s of play with screenshots (compare `-Fps60` with 30) |
 | `find_player.tas`, `find_jump.tas` | memory dumps while steering / jumping; `find_pos.py` searches them for moving float vectors |
 
 ## Script language
@@ -48,6 +51,7 @@ guest time.
 | `set INPUT` / `set` | background input added to everything that follows / clear it |
 | `until COND [and COND] [mash INPUT] [timeout S]` | wait until all conditions hold (default timeout 60 s; a timeout fails the run with exit code 3) |
 | `check COND [msg TEXT]` | log PASS/FAIL without waiting |
+| `poke TYPE EXPR VALUE` | write guest memory; changes game state, only for preparing test saves |
 | `repeat N` ... `end` | loop |
 | `log TEXT` | log line and telemetry marker |
 | `shot NAME` | screenshot to `out/shots/NAME.bmp` |
@@ -71,6 +75,20 @@ COND: `file TEXT` (a disc file whose path contains TEXT was read since the last
 EXPR: hex address, probe `p0`..`p15`, `+`/`-` offsets and `[expr]` to read a pointer,
 e.g. `[80803e10]+2050`. Unmapped addresses read as missing values.
 
+## Test saves
+
+`-Save <name>` starts a run from `out/tasnand/<name>`. To get a save with every world
+unlocked (`allworlds`, used by the `world_*.tas` scripts):
+
+```
+powershell -ExecutionPolicy Bypass -File tools/tas_run.ps1 -Script tools/tas/clear1.tas
+cp -r out/tasnand/run_clear1_30 out/tasnand/allworlds
+python tools/make_test_save.py out/tasnand/allworlds
+```
+
+`make_test_save.py` describes the save file format (checksum, world unlock flags,
+mission records).
+
 ## Known addresses (USA/Japan build: RSRE8P, RSRJ8P)
 
 | what | expression |
@@ -79,6 +97,7 @@ e.g. `[80803e10]+2050`. Unmapped addresses read as missing values.
 | distance along the path | `f32 9102cd50` (decreases while running forward) |
 | lateral offset | `f32 9102cd54` (left negative) |
 | KPAD channel 0 state | `80692b60` (stride 2104) |
+| ring count | one of `u32 9102d378`, `9102d37c`, `9102e0e0`, `91efc544`, `91efcdf8` (Lost Prologue, Paragraph 01; `clear1.tas` sets all five) |
 
 The heap addresses hold for the fresh-save boot path above; other routes may differ.
 The European build (RSRP8P) has its static data 0x40 bytes lower (KPAD channel 0 at

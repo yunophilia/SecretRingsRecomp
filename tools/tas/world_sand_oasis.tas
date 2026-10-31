@@ -1,0 +1,22 @@
+# allworlds save: Sand Oasis, first mission, 45 s of play with screenshots
+# (compare the _30 and _60 runs)
+wait 8
+repeat 9
+tap A
+wait 1.4
+end
+repeat 1
+tap DOWN
+wait 1.5
+end
+shot w_world
+repeat 12
+tap A
+wait 1
+end
+log play
+repeat 9
+mash A 5 1.5
+shot w_play
+end
+quit

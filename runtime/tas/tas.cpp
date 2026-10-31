@@ -115,8 +115,23 @@ bool ReadValue(VType t, const std::string& expr, double& out)
     return true;
 }
 
+// Writes a typed value (the poke command); false if the address does not resolve.
+bool WriteValue(VType t, const std::string& expr, double v)
+{
+    size_t i = 0;
+    uint32_t a;
+    if (!EvalAddr(expr, i, a) || i != expr.size()) return false;
+    uint32_t size = (t == VType::U8 || t == VType::S8) ? 1 : (t == VType::U16 || t == VType::S16) ? 2 : 4;
+    if (!ValidGuest(a, size)) return false;
+    if (t == VType::F32) { float f = (float)v; uint32_t u; memcpy(&u, &f, 4); Write32(a, u); }
+    else if (size == 1) Write8(a, (uint8_t)(int64_t)v);
+    else if (size == 2) Write16(a, (uint16_t)(int64_t)v);
+    else Write32(a, (uint32_t)(int64_t)v);
+    return true;
+}
+
 // ------------------------------------------------------------------ script
-enum class Op { FileMark, Wait, Hold, Tap, Mash, Set, Until, Check, Log, Shot, Dump, Calls, Repeat, End, Quit };
+enum class Op { FileMark, Wait, Hold, Tap, Mash, Set, Until, Check, Poke, Log, Shot, Dump, Calls, Repeat, End, Quit };
 
 struct Input
 {
@@ -329,6 +344,15 @@ void LoadFile(const std::filesystem::path& path, int depth)
             while (!c.text.empty() && c.text[0] == ' ') c.text.erase(0, 1);
             if (c.op != Op::Log && c.text.empty()) bad();
         }
+        else if (w == "poke")
+        {
+            // poke TYPE EXPR VALUE: changes game state, only for preparing test saves
+            Cond cd;
+            std::string t;
+            if (!(ss >> t >> cd.text >> cd.value) || !ParseType(t, cd.type)) bad();
+            c.op = Op::Poke;
+            c.conds.push_back(cd);
+        }
         else if (w == "repeat") { c.op = Op::Repeat; if (!(ss >> c.count)) bad(); }
         else if (w == "end") c.op = Op::End;
         else if (w == "quit") { c.op = Op::Quit; ss >> c.count; }
@@ -469,6 +493,13 @@ void Step(GamepadState* out)
             next();
             continue;
         }
+        case Op::Poke:
+            if (!WriteValue(c.conds[0].type, c.conds[0].text, c.conds[0].value))
+                LOG_WARN("TAS: line {}: poke {} does not resolve", c.line, c.conds[0].text);
+            else
+                LOG_INFO("TAS: poke {} = {}", c.conds[0].text, c.conds[0].value);
+            next();
+            continue;
         case Op::Log: Marker(c.text); next(); continue;
         case Op::Shot:
         {
