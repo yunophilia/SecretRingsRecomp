@@ -1,0 +1,44 @@
+# Party mode, 1 player + 3 computer players: Tournament Palace, several minigames with
+# screenshots (compare the _30 and _60 runs)
+wait 28
+tap A 0.2
+wait 5
+tap RIGHT 0.2
+wait 2
+# Party, 1 player + 3 computer players, Sonic, then each computer player's character
+# and difficulty; spaced so that no press is lost in a screen transition
+repeat 10
+tap A 0.2
+wait 5
+end
+# board intro, then two dialogs ("Welcome...", "Select an attraction!")
+wait 20
+repeat 2
+tap A 0.2
+wait 4
+end
+# board: Tournament Palace (two up from Exit)
+shot board
+tap UP 0.2
+wait 1.5
+shot board
+tap UP 0.2
+wait 1.5
+shot board
+repeat 6
+filemark
+until file Info_E.bun mash A timeout 150
+wait 3
+shot info
+tap START 0.2
+wait 2
+shot game
+repeat 6
+hold 1 LEFT+A
+hold 1 RIGHT
+hold 1 UP+A
+hold 1 DOWN
+shot game
+end
+end
+quit
