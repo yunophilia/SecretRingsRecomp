@@ -43,6 +43,10 @@ jobs:
             New-Item -ItemType Directory -Force game/inputs/RSRP8P/sys, game/inputs/RSRP8P/files | Out-Null
             Copy-Item private-inputs/RSRP8P/sys/main.dol game/inputs/RSRP8P/sys/
             Copy-Item private-inputs/RSRP8P/files/SONICRINGS.sel game/inputs/RSRP8P/files/
+            if (Test-Path private-inputs/RSRP8P/mem1_dump.bin) {
+              New-Item -ItemType Directory -Force out/eu | Out-Null
+              Copy-Item private-inputs/RSRP8P/mem1_dump.bin out/eu/
+            }
           }
           Remove-Item -Recurse -Force private-inputs
 
@@ -55,6 +59,7 @@ jobs:
         run: |
           # the hbm_part.rso module is recompiled only when a memory dump is there
           if ((Test-Path out/mem1_dump.bin) -or (Test-Path out/mem2_dump.bin)) { python tools/rso.py }
+          if (Test-Path out/eu/mem1_dump.bin) { python tools/rso.py out/eu/mem1_dump.bin --out out/eu }
           python tools/build_generated.py
 
       - name: Build

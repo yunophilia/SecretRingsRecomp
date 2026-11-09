@@ -10,7 +10,10 @@ function analysis over its text and writes:
   out/rso_info.json       {"text": addr, "size": n, "hash": fnv1a64, "data": [[addr, size], ...]}
   out/rso_functions.json  function list (same format as functions.json)
 
-  python tools/rso.py [dump]
+  python tools/rso.py [dump] [--out dir]
+
+--out: where the three files go (default out/; out/eu/ for the European build, with
+its dump out/eu/mem1_dump.bin, which tools/build_generated.py passes).
 
 The dump is out/mem1_dump.bin (or out/mem2_dump.bin), which SRR_DUMPMEM=1 writes
 (both) on the first call into code outside main.dol, or a MEM1/MEM2 dump from the TAS
@@ -70,6 +73,11 @@ class Image:
 
 
 def main():
+    global OUT
+    if '--out' in sys.argv:
+        i = sys.argv.index('--out')
+        OUT = sys.argv[i + 1]
+        del sys.argv[i:i + 2]
     rso = open(RSO, 'rb').read()
     if len(sys.argv) > 1:
         dumps = [(sys.argv[1], 0x90000000 if sys.argv[1].endswith('mem2') else 0x80000000)]

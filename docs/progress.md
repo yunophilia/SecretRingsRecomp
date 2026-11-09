@@ -45,7 +45,8 @@
       as the HOME menu: interpreted, a movie frame took ~21 ms of CPU, so movies ran at
       ~47 fps at 60; recompiled they hold 60. `tools/rso.py` takes a memory dump
       (`SRR_DUMPMEM=1`, or the TAS `dump` command) to find the linked module
-- [ ] Recompile the European build's copy of the module (linked 0x40 lower, interpreted)
+- [x] The European build's copy of the module (linked 0x40 lower): matched with the
+      USA one like main.dol, all 1,657 functions shared; boot movies hold 60 fps on both
 
 ## Releases
 

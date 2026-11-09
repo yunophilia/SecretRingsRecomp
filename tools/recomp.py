@@ -980,13 +980,28 @@ def write_sources(outdir, files, suffix):
     write_if_changed(os.path.join(outdir, 'sources.cmake'), ''.join(src))
 
 
+def add_rso(dol, funcs, d):
+    """The linked hbm_part.rso module (tools/rso.py, its files in d), if there: appended to
+    dol as an extra text section and to funcs. Returns (funcs, info or None)."""
+    path = os.path.join(d, 'rso_info.json')
+    if not os.path.exists(path):
+        return funcs, None
+    from dol import Section
+    info = json.load(open(path))
+    img = open(os.path.join(d, 'rso_image.bin'), 'rb').read()
+    dol.sections.append(Section('text', 7, 0, info['text'], img))
+    dol.text = [x for x in dol.sections if x.kind == 'text']
+    return funcs + json.load(open(os.path.join(d, 'rso_functions.json'))), info
+
+
 def european_build(dol, funcs, overrides, eu_dol_path, eu_funcs_path):
     """Recompiler for the European main.dol and its {base start: European start} matches.
     Its matched functions are called by the base build's names (the runtime's overrides
-    included); the rest are eu_fn_<address>."""
+    included); the rest are eu_fn_<address>. Its copy of the hbm_part.rso module is
+    matched too when tools/rso.py prepared it (out/eu/). Returns (rc, match, module info)."""
     from regions import AddrMap, match_functions
     eu_dol = Dol(eu_dol_path)
-    eu_funcs = json.load(open(eu_funcs_path))
+    eu_funcs, rso = add_rso(eu_dol, json.load(open(eu_funcs_path)), os.path.dirname(eu_funcs_path))
     match = match_functions(dol, funcs, eu_dol, eu_funcs)
     amap = AddrMap(funcs, match)
     missing = [a for a in overrides if dol.is_text(a) and a not in match]
@@ -1002,7 +1017,7 @@ def european_build(dol, funcs, overrides, eu_dol_path, eu_funcs_path):
     probes = {amap(a): p for a, p in PROBES.items() if amap(a) is not None}
     rc = Recompiler(eu_dol, eu_funcs, (), patches, probes, 'eu_', {e: f'fn_{b:08X}' for b, e in match.items()})
     rc.func_at = {f['start']: f for f in eu_funcs}
-    return rc, match
+    return rc, match, rso
 
 
 if __name__ == '__main__':
@@ -1016,26 +1031,19 @@ if __name__ == '__main__':
     overrides = []
     if len(sys.argv) > 4:
         overrides = [int(x, 16) for x in open(sys.argv[4]).read().split()]
-    eu = None
-    if eu_args:
-        eu_rc, match = european_build(dol, funcs, overrides, eu_args[0], eu_args[1])
-        eu = (eu_rc, match, eu_args[2])
-        os.makedirs(eu_args[2], exist_ok=True)
     # Optional: the linked hbm_part.rso module (see tools/rso.py), appended as an extra
     # text section; the runtime only uses it after checking the code in memory.
-    rso_info = os.path.join(os.path.dirname(sys.argv[2]), 'rso_info.json')
-    rso = None
-    if os.path.exists(rso_info):
-        from dol import Section
-        rso = json.load(open(rso_info))
-        img = open(os.path.join(os.path.dirname(sys.argv[2]), 'rso_image.bin'), 'rb').read()
-        dol.sections.append(Section('text', 7, 0, rso['text'], img))
-        dol.text = [x for x in dol.sections if x.kind == 'text']
-        funcs = funcs + json.load(open(os.path.join(os.path.dirname(sys.argv[2]), 'rso_functions.json')))
+    funcs, rso = add_rso(dol, funcs, os.path.dirname(sys.argv[2]))
+    eu = eu_rso = None
+    if eu_args:
+        eu_rc, match, eu_rso = european_build(dol, funcs, overrides, eu_args[0], eu_args[1])
+        eu = (eu_rc, match, eu_args[2])
+        os.makedirs(eu_args[2], exist_ok=True)
     info = ['#pragma once\n// hbm_part.rso module recompiled at its boot-time link address (tools/rso.py)\n']
-    if rso:
-        info.append(f'#define PPC_RSO_TEXT_BEGIN 0x{rso["text"]:08X}u\n#define PPC_RSO_TEXT_END 0x{rso["text"] + rso["size"]:08X}u\n'
-                    f'#define PPC_RSO_TEXT_HASH 0x{rso["hash"]:016X}ull\n')
+    for suffix, r in (('', rso), ('_EU', eu_rso)):
+        if r:
+            info.append(f'#define PPC_RSO_TEXT_BEGIN{suffix} 0x{r["text"]:08X}u\n#define PPC_RSO_TEXT_END{suffix} 0x{r["text"] + r["size"]:08X}u\n'
+                        f'#define PPC_RSO_TEXT_HASH{suffix} 0x{r["hash"]:016X}ull\n')
     write_if_changed(os.path.join(sys.argv[3], 'ppc_rso_info.h'), ''.join(info))
     rc = Recompiler(dol, funcs, overrides)
     files = rc.run(sys.argv[3], eu)
