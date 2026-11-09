@@ -37,6 +37,10 @@
       Beat the Clock, Collect Rings, Rampage, Chain of Rings, the Sand Scorpion boss):
       the same progress as at 30 fps, the Beat the Clock timer counts 5 s per 5 s at
       both rates, 59-60 fps
+- [x] 60 fps soak: 15 min of random input in Sand Oasis (missions, retries, pause) on the
+      `allworlds` save, 59.3-60.3 fps throughout, no errors
+- [x] 60 fps: the bosses of Sand Oasis, Evil Foundry and Pirate Storm, and Night Palace's
+      final movie, match the 30 fps runs
 - [ ] 60 fps: the other worlds' bosses and a full playthrough (a 60 fps cheat code, the
       same change, is reported to break some places)
 - [ ] Verify the bloom/glow pass against real hardware or Dolphin (dark halos behind the
