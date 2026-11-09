@@ -33,8 +33,12 @@
       with 12 different minigames (Pirate Flag, Edge Race, Heavy Ball, Parasol Diving,
       Marksman, Balance Battle, Canoe Salvage, Treasure Box, Kri Ma Djinn, Steel
       Survival, Cogwheel Relay, Canoe Survival); timers run at real time at both rates
-- [ ] 60 fps in the other mission types and bosses (a 60 fps cheat code, the same
-      change, is reported to break some places)
+- [x] 60 fps in each mission type (Sand Oasis: Head to Head against Uhu, No Pearls,
+      Beat the Clock, Collect Rings, Rampage, Chain of Rings, the Sand Scorpion boss):
+      the same progress as at 30 fps, the Beat the Clock timer counts 5 s per 5 s at
+      both rates, 59-60 fps
+- [ ] 60 fps: the other worlds' bosses and a full playthrough (a 60 fps cheat code, the
+      same change, is reported to break some places)
 - [ ] Verify the bloom/glow pass against real hardware or Dolphin (dark halos behind the
       crystal blocks in Lost Prologue come from a subtractive blend the game really uses)
 - [ ] Recompile the HOME menu module (`hbm_part.rso`, runs in the interpreter for now)

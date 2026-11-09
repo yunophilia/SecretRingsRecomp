@@ -34,6 +34,7 @@ below-normal priority (`-Full` uses the real settings). Game options for scripte
 | `party_tournament.tas` | Party mode, 1 player + 3 computer players: Tournament Palace, six minigames with screenshots (the games are random; use `-Seconds 900`) |
 | `party_2p.tas` | the same with 2 players (two Wii Remotes) + 2 computer players; player 2 picks a character and plays its matches |
 | `clear1.tas` | fresh save: clears Lost Prologue, Paragraph 01 (ring count poked to 49) and saves; the start of a test save |
+| `sand_oasis_<type>.tas` | `allworlds` save: a Sand Oasis mission of each type (head to head, no pearls, beat the clock, collect rings, rampage, chain of rings, boss), 50 s of play |
 | `world_<name>.tas` | `allworlds` save: a world's first mission, 45 s of play with screenshots (compare `-Fps60` with 30) |
 | `find_player.tas`, `find_jump.tas` | memory dumps while steering / jumping; `find_pos.py` searches them for moving float vectors |
 
