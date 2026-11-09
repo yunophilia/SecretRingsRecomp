@@ -28,7 +28,14 @@
 - [x] Party mode with 4 players (four Wii Remotes) at 30 and 60 fps: each picks a
       character, the tournament plays its matches (Color Balloon, Bubble Hunt and Carpet
       among them), no errors; 60 fps dips only for a moment at minigame ends (loading)
-- [ ] The Wii Remote speaker (Party mode sounds)
+- [ ] The Wii Remote speaker: the game streams each remote's mix all the time
+      (fn_801C40A8: AXRmt samples -> WENCGetEncodeData -> WPADSendStreamData) and the
+      HLE decodes and plays it, but in ~1 h of gameplay and Party mode (Treasure Box
+      included) the mix was silent: the game routes only some sound effects to a
+      remote (its sound engine calls AXSetVoiceRmtOn, 0x80544034, for sounds with
+      remote flags, from 0x80306ae4), and none played. The voice layout is right (the
+      AXSetVoice* setters write the same offsets the AX HLE reads). Still to find: a
+      scene that plays one
 - [x] 60 fps in every world: the first mission of all seven worlds after Lost Prologue
       holds 59-60 fps with the same progress as at 30 fps at the same time
       (`tools/tas/world_*.tas` on a save from `tools/make_test_save.py`)
