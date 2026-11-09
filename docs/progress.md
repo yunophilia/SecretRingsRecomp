@@ -53,8 +53,16 @@
       Bemoth, Erazor Djinn's Boss Duel) and Night Palace's Last Chapter (2.5 min of
       story, the same subtitle at the same moment at both rates) match the 30 fps runs.
       Dinosaur Jungle, Levitated Ruin and Skeleton Dome list no boss.
-- [ ] 60 fps: a full playthrough from a new file (story-only events) (a 60 fps cheat code, the
-      same change, is reported to break some places)
+- [x] 60 fps: a playthrough from a new file to the ending (`tools/story_run.py`, docs/tas.md):
+      80 runs, 52 missions cleared in all eight worlds, with the story movies in between
+      (the first ones played through, e.g. e0002 at 59.6-60.3 fps for 3 min; later ones
+      skipped with +), the unlock dialogs, saves, Erazor Djinn's Boss Duel, the last movie
+      (e0028) and the staff roll, back to the title screen. After boot: 5,126 one-second
+      samples, minimum 58.3 fps, median 59.9; no errors. Missions were made "collect 1
+      ring" in a test copy of the data so a script can clear them; Captain Bemoth (no
+      rings in the arena) was marked cleared in the save and Skeleton Dome unlocked by
+      hand. One spot in Sand Oasis (Sonic stuck on a leaning pillar when not steering)
+      happens the same at 30 fps
 - [ ] Verify the bloom/glow pass against real hardware or Dolphin (dark halos behind the
       crystal blocks in Lost Prologue come from a subtractive blend the game really uses)
 - [x] Recompile the `hbm_part.rso` module (USA/Japan). It holds the movie player as well

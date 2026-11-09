@@ -95,6 +95,29 @@ python tools/make_test_save.py out/tasnand/allworlds
 `make_test_save.py` describes the save file format (checksum, world unlock flags,
 mission records).
 
+## Story playthrough
+
+```
+python tools/story_run.py [--fps 60] [--fresh]
+```
+
+plays Adventure mode from a new file, one mission per game run, on a save it keeps in
+`out/tasnand/story60` (state and per-run results in `out/story/story60/state.json`,
+logs and shots under `out/tas/story60_NNN*`). It makes `out/storydata`, a hard-linked
+copy of the game data whose `actstgmission.txt` turns every mission into "collect 1
+ring" (Lost Prologue's tutorials keep their enemy/pot counts, with a target of 1), so a
+fixed rhythm of jumps, homing attacks, steering, braking and shakes clears it; the
+game itself decides what each clear unlocks and plays the story in between. After each
+run the driver reads `game_0.sav` and picks the lowest unlocked, uncleared mission of
+the newest world. Mission records are the mission list rows in order; a world's first
+row is the last record unlocked together with the world. The world wheel starts on the
+world kept in the save and wraps; the mission list starts at the top. Success is the
+Mission Complete jingle (`adx/bgm_mc.adx`); the run then presses B (results), A
+(dialogs) and + (skips story movies) until the world menu loads after the save. A mission
+that fails twice is left; a boss without rings in its arena (Captain Bemoth) has to be
+marked cleared in the save by hand, with the next world's unlock byte and first record.
+Only one driver runs at a time (`driver.pid`).
+
 ## Known addresses (USA/Japan build: RSRE8P, RSRJ8P)
 
 | what | expression |
