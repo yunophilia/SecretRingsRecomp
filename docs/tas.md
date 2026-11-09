@@ -55,7 +55,7 @@ guest time.
 | `tap INPUT [S]` | hold for S (default 0.1) then release for 0.1 s |
 | `mash INPUT S [P]` | press repeatedly for S seconds, period P (default 0.2) |
 | `set INPUT` / `set` | background input added to everything that follows / clear it |
-| `until COND [and COND] [mash INPUT] [timeout S]` | wait until all conditions hold (default timeout 60 s; a timeout fails the run with exit code 3) |
+| `until COND [and COND] [mash INPUT[,INPUT...] [period P]] [timeout S] [soft]` | wait until all conditions hold, pressing INPUT every P s (default 0.2) meanwhile; several comma-separated inputs are pressed in turn (default timeout 60 s; a timeout fails the run with exit code 3, or with `soft` goes on to the next command) |
 | `check COND [msg TEXT]` | log PASS/FAIL without waiting |
 | `poke TYPE EXPR VALUE` | write guest memory; changes game state, only for preparing test saves |
 | `repeat N` ... `end` | loop |

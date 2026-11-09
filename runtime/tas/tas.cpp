@@ -154,7 +154,9 @@ struct Cmd
     Op op;
     double secs = 0, period = 0;
     Input input[4];        // players 1-4 ("P2:" ... "P4:" inputs)
-    bool mash = false;
+    struct Inputs { Input in[4]; };
+    std::vector<Inputs> alt;   // "until ... mash A,X": inputs pressed in turn
+    bool mash = false, soft = false;   // soft: an "until" timeout continues the script
     std::vector<Cond> conds;   // all must hold
     std::string text;
     int count = 0, match = -1;
@@ -329,7 +331,25 @@ void LoadFile(const std::filesystem::path& path, int depth)
             while (ss >> tok)
             {
                 if (tok == "timeout") { if (!(ss >> c.secs)) bad(); continue; }
-                if (tok == "mash") { std::string in; if (!(ss >> in) || !ParseInputFor(in, c.input)) bad(); c.mash = true; c.period = 0.2; continue; }
+                if (tok == "soft") { c.soft = true; continue; }
+                if (tok == "period") { if (!(ss >> c.period) || c.period <= 0) bad(); continue; }
+                if (tok == "mash")
+                {
+                    // mash INPUT[,INPUT...]: several inputs are pressed in turn, one per period
+                    std::string in, part;
+                    if (!(ss >> in)) bad();
+                    std::stringstream parts(in);
+                    while (std::getline(parts, part, ','))
+                    {
+                        Cmd::Inputs a;
+                        if (!ParseInputFor(part, a.in)) bad();
+                        c.alt.push_back(a);
+                    }
+                    if (c.alt.empty()) bad();
+                    c.mash = true;
+                    if (c.period <= 0) c.period = 0.2;
+                    continue;
+                }
                 if (tok == "and") continue;
                 if (c.op == Op::Check && tok == "msg") { std::getline(ss, c.text); break; }
                 Cond cd;
@@ -484,10 +504,14 @@ void Step(GamepadState* out)
             if (all) { LOG_INFO("TAS: line {} satisfied after {:.2f} s", c.line, el); next(); continue; }
             if (el >= c.secs)
             {
+                if (c.soft) { LOG_INFO("TAS: line {} timed out after {:.0f} s, continuing", c.line, c.secs); next(); continue; }
                 LOG_WARN("TAS: FAIL line {}: condition not met within {:.0f} s", c.line, c.secs);
                 Quit(3);
             }
-            if (c.mash && fmod(el, c.period) < c.period / 2) MergeAll(out, c.input);
+            if (c.mash && fmod(el, c.period) < c.period / 2)
+            {
+                MergeAll(out, c.alt[size_t(el / c.period) % c.alt.size()].in);
+            }
             return;
         }
         case Op::Check:
