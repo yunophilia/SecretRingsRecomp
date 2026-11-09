@@ -39,9 +39,11 @@
       both rates, 59-60 fps
 - [x] 60 fps soak: 15 min of random input in Sand Oasis (missions, retries, pause) on the
       `allworlds` save, 59.3-60.3 fps throughout, no errors
-- [x] 60 fps: the bosses of Sand Oasis, Evil Foundry and Pirate Storm, and Night Palace's
-      final movie, match the 30 fps runs
-- [ ] 60 fps: the other worlds' bosses and a full playthrough (a 60 fps cheat code, the
+- [x] 60 fps: every boss in the mission lists (Sand Scorpion, Ifrit Golem, Captain
+      Bemoth, Erazor Djinn's Boss Duel) and Night Palace's Last Chapter (2.5 min of
+      story, the same subtitle at the same moment at both rates) match the 30 fps runs.
+      Dinosaur Jungle, Levitated Ruin and Skeleton Dome list no boss.
+- [ ] 60 fps: a full playthrough from a new file (story-only events) (a 60 fps cheat code, the
       same change, is reported to break some places)
 - [ ] Verify the bloom/glow pass against real hardware or Dolphin (dark halos behind the
       crystal blocks in Lost Prologue come from a subtractive blend the game really uses)

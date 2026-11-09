@@ -1,4 +1,4 @@
-# allworlds save: Night Palace, the last mission in the list (the boss),
+# allworlds save: Night Palace, Boss Duel (second to last in the list),
 # 50 s of play with screenshots (compare the _30 and _60 runs)
 wait 8
 repeat 9
@@ -11,6 +11,8 @@ wait 1.5
 end
 tap A
 wait 2
+tap UP 0.1
+wait 1
 tap UP 0.1
 wait 1
 shot m_list
