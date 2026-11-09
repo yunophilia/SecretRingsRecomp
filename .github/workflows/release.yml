@@ -36,7 +36,8 @@ jobs:
           New-Item -ItemType Directory -Force game/extracted/DATA/sys, game/extracted/DATA/files, out | Out-Null
           Copy-Item private-inputs/sys/main.dol game/extracted/DATA/sys/
           Copy-Item private-inputs/files/SONICRINGS.sel, private-inputs/files/hbm_part.rso game/extracted/DATA/files/
-          if (Test-Path private-inputs/mem2_dump.bin) { Copy-Item private-inputs/mem2_dump.bin out/ }
+          # a memory dump with the linked hbm_part.rso module (tools/rso.py), optional
+          foreach ($d in 'mem1_dump.bin', 'mem2_dump.bin') { if (Test-Path private-inputs/$d) { Copy-Item private-inputs/$d out/ } }
           # the European release's main.dol (a separate build), optional
           if (Test-Path private-inputs/RSRP8P/sys/main.dol) {
             New-Item -ItemType Directory -Force game/inputs/RSRP8P/sys, game/inputs/RSRP8P/files | Out-Null
@@ -52,7 +53,8 @@ jobs:
       - name: Generate the recompiled code
         shell: pwsh
         run: |
-          python tools/rso.py
+          # the hbm_part.rso module is recompiled only when a memory dump is there
+          if ((Test-Path out/mem1_dump.bin) -or (Test-Path out/mem2_dump.bin)) { python tools/rso.py }
           python tools/build_generated.py
 
       - name: Build

@@ -95,7 +95,11 @@ Dear ImGui). `tools/dev_build.bat` sets up the Visual Studio environment and bui
 4. Generate the recompiled sources: `python tools/build_generated.py` (`generated/`, plus
    `generated/eu/` for the European build). To rematch SDK names, pass
    `--dsy <Dolphin>/Sys/totaldb.dsy` with `--reanalyze`.
-5. Build the game: `tools\dev_build.bat` → `out\SecretRingsRecomp.exe`
+5. Optional, recommended: recompile the `hbm_part.rso` module (movies and the HOME menu;
+   otherwise they run in the interpreter, too slowly for movies at 60 fps). Run the game
+   once with `SRR_DUMPMEM=1` set until the title screen; it writes `mem1_dump.bin` next
+   to the exe. Move it to `out/`, run `python tools/rso.py`, then step 4 again.
+6. Build the game: `tools\dev_build.bat` → `out\SecretRingsRecomp.exe`
 
 ## Settings
 

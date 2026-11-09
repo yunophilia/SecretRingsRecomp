@@ -1,0 +1,29 @@
+# allworlds save: Dinosaur Jungle, the last mission in the list (the boss),
+# 50 s of play with screenshots (compare the _30 and _60 runs)
+wait 8
+repeat 9
+tap A
+wait 1.4
+end
+repeat 2
+tap DOWN
+wait 1.5
+end
+tap A
+wait 2
+tap UP 0.1
+wait 1
+shot m_list
+repeat 11
+tap A
+wait 1
+end
+log play
+repeat 10
+hold 1 LX=-0.6+A
+hold 1.5 LX=0.6
+hold 1 X
+hold 1.5
+shot m_play
+end
+quit

@@ -1,15 +1,20 @@
-"""Prepare the HOME menu module (hbm_part.rso) for static recompilation.
+"""Prepare the hbm_part.rso module for static recompilation.
 
-The game links the module at boot with OSLink, so its relocated code sits at a fixed
-MEM2 address. Given a MEM2 dump taken after linking (SRR_DUMPMEM2=1 writes
-out/mem2_dump.bin on the first call into MEM2 code), this finds the module, runs the
-normal function analysis over its text and writes:
+Despite its name the module holds more than the HOME menu: the game calls into it
+for its movies as well, so it runs often. The game links it at boot with OSLink, so its
+relocated code sits at a fixed address (MEM1 0x8083d5f0 in the USA/Japan build).
+Given a memory dump taken after linking, this finds the module, runs the normal
+function analysis over its text and writes:
 
   out/rso_image.bin       relocated text section
   out/rso_info.json       {"text": addr, "size": n, "hash": fnv1a64, "data": [[addr, size], ...]}
   out/rso_functions.json  function list (same format as functions.json)
 
-  python tools/rso.py
+  python tools/rso.py [dump]
+
+The dump is out/mem1_dump.bin (or out/mem2_dump.bin), which SRR_DUMPMEM=1 writes
+(both) on the first call into code outside main.dol, or a MEM1/MEM2 dump from the TAS
+`dump` command (out/dumps/<name>.mem1 / .mem2).
 """
 import json
 import os
@@ -22,8 +27,8 @@ from analyze import Analyzer, cross_targets, data_code_pointers   # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RSO = os.path.join(ROOT, 'game', 'extracted', 'DATA', 'files', 'hbm_part.rso')
-DUMP = os.path.join(ROOT, 'out', 'mem2_dump.bin')
-DUMP_BASE = 0x90000000
+DUMPS = [(os.path.join(ROOT, 'out', 'mem1_dump.bin'), 0x80000000),
+         (os.path.join(ROOT, 'out', 'mem2_dump.bin'), 0x90000000)]
 OUT = os.path.join(ROOT, 'out')
 
 
@@ -66,16 +71,34 @@ class Image:
 
 def main():
     rso = open(RSO, 'rb').read()
-    mem = open(DUMP, 'rb').read()
+    if len(sys.argv) > 1:
+        dumps = [(sys.argv[1], 0x90000000 if sys.argv[1].endswith('mem2') else 0x80000000)]
+    else:
+        dumps = [d for d in DUMPS if os.path.exists(d[0])]
+        if not dumps:
+            sys.exit('no memory dump: run the game with SRR_DUMPMEM=1 (see the module docstring)')
     nsec, secoff = struct.unpack_from('>II', rso, 8)
     secs = [struct.unpack_from('>II', rso, secoff + 8 * i) for i in range(nsec)]
     text_off, text_size = secs[1]
-    # locate the linked module: relocations only touch a few words, so match a run
-    probe = rso[text_off + 0x2800:text_off + 0x2820]
-    i = mem.find(probe)
-    if i < 0:
+    # locate the linked module: relocations only touch some words, so find candidates
+    # from 32-byte runs of the text, then keep the one where most words match (a run
+    # can also match repeated code elsewhere)
+    code = rso[text_off:text_off + text_size]
+    best = (0, None)
+    for path, base in dumps:
+        mem = open(path, 'rb').read()
+        for off in range(0x800, text_size - 0x20, 0x4000):
+            i = mem.find(code[off:off + 0x20])
+            if i < 0 or i < off:
+                continue
+            cand = mem[i - off:i - off + text_size]
+            score = sum(cand[k:k + 4] == code[k:k + 4] for k in range(0, text_size, 4))
+            if score > best[0]:
+                best = (score, (path, base, base + i - off))
+    if best[0] < text_size // 8:
         sys.exit('module text not found in the dump')
-    text_addr = DUMP_BASE + i - 0x2800
+    path, DUMP_BASE, text_addr = best[1]
+    mem = open(path, 'rb').read()
     load_base = text_addr - text_off
     print(f'module loaded at {load_base:08x}, text {text_addr:08x}+{text_size:x}')
     img = mem[text_addr - DUMP_BASE:text_addr - DUMP_BASE + text_size]

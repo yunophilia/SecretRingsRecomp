@@ -8,7 +8,7 @@
       `SONICRINGS.sel` and Dolphin's signature DB (2,618 matches)
 - [x] Runtime overrides remapped to this executable (OS context switch, interrupts,
       OSReport/OSPanic/OSFatal, VIGetRetraceCount, WPAD) with `tools/fuzzymatch.py`
-- [x] Boot: OS, IOS, DVD, SC, NAND, DSP/AX, KPAD, HOME button RSO module (interpreted)
+- [x] Boot: OS, IOS, DVD, SC, NAND, DSP/AX, KPAD, the hbm_part.rso module
 - [x] Title screen, menus, file select, story scenes, FMV
 - [x] Gameplay (Lost Prologue): steering, jump, homing attack/air thrust, brake, backtracking
 - [x] Emulated console is a US (NTSC) Wii, as RSRE8P is the USA release; earlier builds
@@ -41,7 +41,11 @@
       same change, is reported to break some places)
 - [ ] Verify the bloom/glow pass against real hardware or Dolphin (dark halos behind the
       crystal blocks in Lost Prologue come from a subtractive blend the game really uses)
-- [ ] Recompile the HOME menu module (`hbm_part.rso`, runs in the interpreter for now)
+- [x] Recompile the `hbm_part.rso` module (USA/Japan). It holds the movie player as well
+      as the HOME menu: interpreted, a movie frame took ~21 ms of CPU, so movies ran at
+      ~47 fps at 60; recompiled they hold 60. `tools/rso.py` takes a memory dump
+      (`SRR_DUMPMEM=1`, or the TAS `dump` command) to find the linked module
+- [ ] Recompile the European build's copy of the module (linked 0x40 lower, interpreted)
 
 ## Releases
 

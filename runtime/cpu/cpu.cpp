@@ -31,8 +31,9 @@ static constexpr uint32_t CODE_BEGIN = 0x80004000;
 static constexpr uint32_t CODE_END = 0x80700000;
 static std::vector<PPCFunc> s_table;
 
-// The HOME menu module, recompiled at its boot-time link address. Its functions are
-// used only once the code in guest memory is verified to be that exact image.
+// The hbm_part.rso module (HOME menu and movie playback), recompiled at its boot-time
+// link address. Its functions are used only once the code in guest memory is verified
+// to be that exact image.
 #include "ppc_rso_info.h"
 #ifdef PPC_RSO_TEXT_BEGIN
 static std::vector<PPCFunc> s_rsoTable;
@@ -48,11 +49,11 @@ static bool RsoVerified()
     if (h == PPC_RSO_TEXT_HASH)
     {
         s_rsoState = 1;
-        LOG_INFO("HOME menu module matches the recompiled image");
+        LOG_INFO("hbm_part.rso module matches the recompiled image");
         return true;
     }
     static bool warned = false;
-    if (!warned) { warned = true; LOG_INFO("HOME menu module differs from the recompiled image; interpreting it"); }
+    if (!warned) { warned = true; LOG_INFO("hbm_part.rso module differs from the recompiled image; interpreting it"); }
     s_rsoState = -100000;
     return false;
 }
@@ -109,14 +110,16 @@ extern "C" void ppc_call_indirect(PPCContext& ctx, uint8_t* base, uint32_t addr)
         bool inRam = (addr >= 0x80000000) && (phys < MEM1_SIZE || (phys >= 0x10000000 && phys < 0x10000000 + MEM2_SIZE));
         if (!inRam || (addr & 3))
             FATAL("indirect call to invalid address {:08x} (lr={:08x})", addr, ctx.lr);
-        // SRR_DUMPMEM2=1: dump MEM2 on the first call into it (input for tools/rso.py)
-        static const bool dumpMem2 = getenv("SRR_DUMPMEM2") != nullptr;
-        if (dumpMem2)
+        // SRR_DUMPMEM=1: dump MEM1 and the start of MEM2 on the first call into code
+        // outside main.dol, once a module is linked (input for tools/rso.py)
+        static const bool dumpMem = getenv("SRR_DUMPMEM") != nullptr;
+        if (dumpMem)
         {
             static bool dumped = false;
-            if (!dumped && addr >= 0x90000000)
+            if (!dumped)
             {
                 dumped = true;
+                if (FILE* f = fopen("mem1_dump.bin", "wb")) { fwrite(base + 0x80000000, 1, MEM1_SIZE, f); fclose(f); }
                 if (FILE* f = fopen("mem2_dump.bin", "wb")) { fwrite(base + 0x90000000, 1, 0x100000, f); fclose(f); }
             }
         }

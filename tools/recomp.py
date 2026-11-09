@@ -1021,7 +1021,7 @@ if __name__ == '__main__':
         eu_rc, match = european_build(dol, funcs, overrides, eu_args[0], eu_args[1])
         eu = (eu_rc, match, eu_args[2])
         os.makedirs(eu_args[2], exist_ok=True)
-    # Optional: the linked HOME menu module (see tools/rso.py), appended as an extra
+    # Optional: the linked hbm_part.rso module (see tools/rso.py), appended as an extra
     # text section; the runtime only uses it after checking the code in memory.
     rso_info = os.path.join(os.path.dirname(sys.argv[2]), 'rso_info.json')
     rso = None
@@ -1032,7 +1032,7 @@ if __name__ == '__main__':
         dol.sections.append(Section('text', 7, 0, rso['text'], img))
         dol.text = [x for x in dol.sections if x.kind == 'text']
         funcs = funcs + json.load(open(os.path.join(os.path.dirname(sys.argv[2]), 'rso_functions.json')))
-    info = ['#pragma once\n// HOME menu module recompiled at its boot-time link address (tools/rso.py)\n']
+    info = ['#pragma once\n// hbm_part.rso module recompiled at its boot-time link address (tools/rso.py)\n']
     if rso:
         info.append(f'#define PPC_RSO_TEXT_BEGIN 0x{rso["text"]:08X}u\n#define PPC_RSO_TEXT_END 0x{rso["text"] + rso["size"]:08X}u\n'
                     f'#define PPC_RSO_TEXT_HASH 0x{rso["hash"]:016X}ull\n')
