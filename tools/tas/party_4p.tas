@@ -1,0 +1,47 @@
+# Party mode, 4 players (four Wii Remotes): Tournament Palace, minigames with every
+# player's input and screenshots
+players 4
+wait 28
+tap A 0.2
+wait 5
+tap RIGHT 0.2
+wait 2
+# Party, 4 players
+repeat 2
+tap A 0.2
+wait 5
+end
+# characters: every player picks the one under their cursor (each starts on another)
+wait 3
+repeat 2
+tap A P2:A P3:A P4:A 0.2
+wait 3
+shot select
+end
+# board intro, then two dialogs
+wait 20
+repeat 2
+tap A 0.2
+wait 4
+end
+tap UP 0.2
+wait 1.5
+tap UP 0.2
+wait 1.5
+shot board
+repeat 6
+filemark
+until file Info_E.bun mash A timeout 150
+wait 3
+shot info
+tap START P2:START P3:START P4:START 0.2
+wait 2
+repeat 6
+hold 1 LEFT+A P2:RIGHT+A P3:UP+A P4:DOWN+A
+hold 1 RIGHT P2:LEFT P3:DOWN P4:UP
+hold 1 UP+A P2:DOWN+A P3:LEFT+A P4:RIGHT+A
+hold 1 DOWN P2:UP P3:RIGHT P4:LEFT
+shot game
+end
+end
+quit

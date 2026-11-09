@@ -32,6 +32,7 @@ below-normal priority (`-Full` uses the real settings). Game options for scripte
 | `home_pause.tas` | HOME menu and pause menu during gameplay, with screenshots |
 | `party.tas` | main menu, Party mode setup, character select and the party board |
 | `party_tournament.tas` | Party mode, 1 player + 3 computer players: Tournament Palace, six minigames with screenshots (the games are random; use `-Seconds 900`) |
+| `party_4p.tas` | the same with 4 players (four Wii Remotes) |
 | `party_2p.tas` | the same with 2 players (two Wii Remotes) + 2 computer players; player 2 picks a character and plays its matches |
 | `clear1.tas` | fresh save: clears Lost Prologue, Paragraph 01 (ring count poked to 49) and saves; the start of a test save |
 | `sand_oasis_<type>.tas` | `allworlds` save: a Sand Oasis mission of each type (head to head, no pearls, beat the clock, collect rings, rampage, chain of rings, boss), 50 s of play |
@@ -47,7 +48,7 @@ guest time.
 
 | command | effect |
 |---|---|
-| `players N` | controllers the game sees (1 or 2); player 2 takes the `P2:` inputs |
+| `players N` | controllers the game sees (1 to 4); players 2-4 take the `P2:` ... `P4:` inputs |
 | `filemark` | `file` conditions only count disc reads after this point (default: script start) |
 | `wait S` | no input for S seconds |
 | `hold S INPUT` | hold INPUT for S seconds |
@@ -68,8 +69,8 @@ guest time.
 
 INPUT: `A B X Y LB RB START BACK UP DOWN LEFT RIGHT HOME LS RS` joined with `+`, and
 analog values `LX= LY= RX= RY= LT= RT=` (-1..1) and pointer `PX= PY=` (0..1 of the
-screen), e.g. `hold 2 LY=1.0+A`. A word prefixed `P2:` is player 2's input, e.g.
-`tap A P2:A`. Buttons use this port's logical layout: A = Wii 2 (jump), X = thrust
+screen), e.g. `hold 2 LY=1.0+A`. A word prefixed `P2:`, `P3:` or `P4:` is that player's input (the prefix covers the
+whole word), e.g. `tap A P2:A P3:RIGHT+A`. Buttons use this port's logical layout: A = Wii 2 (jump), X = thrust
 (homing attack), B = Wii 1 (brake), RB/LB = Wii A/B, START = +, HOME; `LX` steers and
 `LY=-1` turns the remote upside down (backtrack).
 

@@ -153,7 +153,7 @@ struct Cmd
 {
     Op op;
     double secs = 0, period = 0;
-    Input input, input2;   // player 1, player 2 ("P2:" inputs)
+    Input input[4];        // players 1-4 ("P2:" ... "P4:" inputs)
     bool mash = false;
     std::vector<Cond> conds;   // all must hold
     std::string text;
@@ -172,9 +172,9 @@ std::vector<Watch> s_watches;
 bool s_active = false;
 size_t s_pc = 0;
 double s_cmdStart = -1;
-Input s_background, s_background2;
+Input s_background[4];
 int s_players = 1;   // "players N": controllers the game sees while a script runs
-GamepadState s_pad2;
+GamepadState s_pads[4];   // players 2-4, computed with player 1's poll
 std::vector<int> s_repeatLeft;
 std::mutex s_fileMutex;
 std::vector<std::string> s_fileReads;
@@ -227,10 +227,11 @@ bool ParseInputToken(const std::string& word, Input& in)
     return ok;
 }
 
-bool ParseInputFor(const std::string& word, Input& p1, Input& p2)
+bool ParseInputFor(const std::string& word, Input (&in)[4])
 {
-    if (word.rfind("P2:", 0) == 0) return ParseInputToken(word.substr(3), p2);
-    return ParseInputToken(word, p1);
+    if (word.size() > 3 && word[0] == 'P' && word[1] >= '2' && word[1] <= '4' && word[2] == ':')
+        return ParseInputToken(word.substr(3), in[word[1] - '1']);
+    return ParseInputToken(word, in[0]);
 }
 
 bool ParseCond(std::istringstream& ss, std::string first, Cond& c)
@@ -295,7 +296,7 @@ void LoadFile(const std::filesystem::path& path, int depth)
         }
         if (w == "players")
         {
-            if (!(ss >> s_players) || s_players < 1 || s_players > 2) bad();
+            if (!(ss >> s_players) || s_players < 1 || s_players > 4) bad();
             continue;
         }
         if (w == "filemark") c.op = Op::FileMark;
@@ -314,7 +315,7 @@ void LoadFile(const std::filesystem::path& path, int depth)
                     else c.period = std::stod(tok);
                     continue;
                 }
-                if (!ParseInputFor(tok, c.input, c.input2)) bad();
+                if (!ParseInputFor(tok, c.input)) bad();
             }
             if (c.op == Op::Tap && c.secs == 0) c.secs = 0.1;
             if (c.op == Op::Mash && c.secs == 0) bad();
@@ -328,7 +329,7 @@ void LoadFile(const std::filesystem::path& path, int depth)
             while (ss >> tok)
             {
                 if (tok == "timeout") { if (!(ss >> c.secs)) bad(); continue; }
-                if (tok == "mash") { std::string in; if (!(ss >> in) || !ParseInputFor(in, c.input, c.input2)) bad(); c.mash = true; c.period = 0.2; continue; }
+                if (tok == "mash") { std::string in; if (!(ss >> in) || !ParseInputFor(in, c.input)) bad(); c.mash = true; c.period = 0.2; continue; }
                 if (tok == "and") continue;
                 if (c.op == Op::Check && tok == "msg") { std::getline(ss, c.text); break; }
                 Cond cd;
@@ -429,6 +430,11 @@ void Merge(GamepadState& out, const Input& in)
     if (in.py >= 0) out.py = in.py;
 }
 
+void MergeAll(GamepadState* out, const Input (&in)[4])
+{
+    for (int i = 0; i < 4; i++) Merge(out[i], in[i]);
+}
+
 // Runs commands until one needs more time; returns that command's input contribution.
 void Step(GamepadState* out)
 {
@@ -455,21 +461,20 @@ void Step(GamepadState* out)
             next();
             continue;
         case Op::Hold:
-            if (el < c.secs) { Merge(out[0], c.input); Merge(out[1], c.input2); return; }
+            if (el < c.secs) { MergeAll(out, c.input); return; }
             next();
             continue;
         case Op::Tap:
-            if (el < c.secs) { Merge(out[0], c.input); Merge(out[1], c.input2); return; }
+            if (el < c.secs) { MergeAll(out, c.input); return; }
             if (el < c.secs + 0.1) return;
             next();
             continue;
         case Op::Mash:
-            if (el < c.secs) { if (fmod(el, c.period) < c.period / 2) Merge(out[0], c.input); Merge(out[1], c.input2); return; }
+            if (el < c.secs) { if (fmod(el, c.period) < c.period / 2) MergeAll(out, c.input); return; }
             next();
             continue;
         case Op::Set:
-            s_background = c.input;
-            s_background2 = c.input2;
+            for (int i = 0; i < 4; i++) s_background[i] = c.input[i];
             next();
             continue;
         case Op::Until:
@@ -482,7 +487,7 @@ void Step(GamepadState* out)
                 LOG_WARN("TAS: FAIL line {}: condition not met within {:.0f} s", c.line, c.secs);
                 Quit(3);
             }
-            if (c.mash && fmod(el, c.period) < c.period / 2) Merge(out[0], c.input); Merge(out[1], c.input2);
+            if (c.mash && fmod(el, c.period) < c.period / 2) MergeAll(out, c.input);
             return;
         }
         case Op::Check:
@@ -582,18 +587,19 @@ bool Tas_Poll(int index, GamepadState& out)
     if (!s_active) return false;
     if (index != 0)
     {
-        // player 2 was computed with player 1's poll (the game polls players in order)
-        out = index == 1 && s_players >= 2 ? s_pad2 : GamepadState();
+        // players 2-4 were computed with player 1's poll (the game polls players in order)
+        out = index < s_players && index < 4 ? s_pads[index] : GamepadState();
         return true;
     }
-    GamepadState pads[2];
-    pads[0].connected = true;
-    pads[1].connected = s_players >= 2;
+    GamepadState pads[4];
+    for (int i = 0; i < 4; i++) pads[i].connected = i < s_players;
     Step(pads);
-    Merge(pads[0], s_background);
-    Merge(pads[1], s_background2);
+    for (int i = 0; i < 4; i++)
+    {
+        Merge(pads[i], s_background[i]);
+        s_pads[i] = pads[i];
+    }
     out = pads[0];
-    s_pad2 = pads[1];
     return true;
 }
 

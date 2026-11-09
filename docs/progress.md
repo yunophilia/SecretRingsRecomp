@@ -25,7 +25,10 @@
 - [x] Party mode with 2 players (two Wii Remotes) at 30 and 60 fps: each player picks
       their character and a computer player's, starts and plays their own matches
       (Marksman with both players against each other); 10 more minigames, no errors
-- [ ] Party mode with 3-4 players, and the Wii Remote speaker
+- [x] Party mode with 4 players (four Wii Remotes) at 30 and 60 fps: each picks a
+      character, the tournament plays its matches (Color Balloon, Bubble Hunt and Carpet
+      among them), no errors; 60 fps dips only for a moment at minigame ends (loading)
+- [ ] The Wii Remote speaker (Party mode sounds)
 - [x] 60 fps in every world: the first mission of all seven worlds after Lost Prologue
       holds 59-60 fps with the same progress as at 30 fps at the same time
       (`tools/tas/world_*.tas` on a save from `tools/make_test_save.py`)
