@@ -1,0 +1,61 @@
+# Party mode, 2 players + 2 computer players (two Wii Remotes): Tournament Palace,
+# minigames with both players' input and screenshots
+players 2
+wait 28
+tap A 0.2
+wait 5
+tap RIGHT 0.2
+wait 2
+# Party, 2 players + 2 computer players
+repeat 2
+tap A 0.2
+wait 5
+end
+# characters: each human player picks their own, then one computer player's
+# character and difficulty (presses that come when nothing is waiting do nothing)
+wait 3
+repeat 4
+tap A 0.2
+wait 3
+tap P2:A 0.2
+wait 3
+shot select
+end
+# the first computer player is player 2's to pick, and its cursor starts on the taken
+# Sonic: Amy (Sonic, Tails and Knuckles are taken), then the difficulty
+repeat 3
+tap P2:RIGHT 0.2
+wait 0.5
+end
+tap P2:A 0.2
+wait 3
+tap P2:A 0.2
+wait 3
+shot select
+# board intro, then two dialogs
+wait 20
+repeat 2
+tap A 0.2
+wait 4
+end
+tap UP 0.2
+wait 1.5
+tap UP 0.2
+wait 1.5
+shot board
+repeat 6
+filemark
+until file Info_E.bun mash A timeout 150
+wait 3
+shot info
+tap START P2:START 0.2
+wait 2
+repeat 6
+hold 1 LEFT+A P2:RIGHT+A
+hold 1 RIGHT P2:LEFT
+hold 1 UP+A P2:DOWN+A
+hold 1 DOWN P2:UP
+shot game
+end
+end
+quit

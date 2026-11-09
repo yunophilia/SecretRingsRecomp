@@ -22,7 +22,10 @@
       one; the European build is recompiled together with it, sharing the code of all
       but 4 functions, and picked at startup from the installed disc; the console region,
       title ID / save folder and file manifest follow the release
-- [ ] Party mode with several human players (multiple remotes) and the Wii Remote speaker
+- [x] Party mode with 2 players (two Wii Remotes) at 30 and 60 fps: each player picks
+      their character and a computer player's, starts and plays their own matches
+      (Marksman with both players against each other); 10 more minigames, no errors
+- [ ] Party mode with 3-4 players, and the Wii Remote speaker
 - [x] 60 fps in every world: the first mission of all seven worlds after Lost Prologue
       holds 59-60 fps with the same progress as at 30 fps at the same time
       (`tools/tas/world_*.tas` on a save from `tools/make_test_save.py`)

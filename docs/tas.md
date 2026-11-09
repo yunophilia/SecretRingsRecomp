@@ -32,6 +32,7 @@ below-normal priority (`-Full` uses the real settings). Game options for scripte
 | `home_pause.tas` | HOME menu and pause menu during gameplay, with screenshots |
 | `party.tas` | main menu, Party mode setup, character select and the party board |
 | `party_tournament.tas` | Party mode, 1 player + 3 computer players: Tournament Palace, six minigames with screenshots (the games are random; use `-Seconds 900`) |
+| `party_2p.tas` | the same with 2 players (two Wii Remotes) + 2 computer players; player 2 picks a character and plays its matches |
 | `clear1.tas` | fresh save: clears Lost Prologue, Paragraph 01 (ring count poked to 49) and saves; the start of a test save |
 | `world_<name>.tas` | `allworlds` save: a world's first mission, 45 s of play with screenshots (compare `-Fps60` with 30) |
 | `find_player.tas`, `find_jump.tas` | memory dumps while steering / jumping; `find_pos.py` searches them for moving float vectors |
