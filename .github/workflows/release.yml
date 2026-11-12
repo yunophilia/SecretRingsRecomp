@@ -33,11 +33,14 @@ jobs:
       - name: Place build inputs
         shell: pwsh
         run: |
+          # One folder per release, named by game ID: RSRE8P (USA, required), RSRP8P
+          # (Europe, optional), RSRJ8P (Japan: its main.dol is the USA one, not used here)
+          $usa = 'private-inputs/RSRE8P'
           New-Item -ItemType Directory -Force game/extracted/DATA/sys, game/extracted/DATA/files, out | Out-Null
-          Copy-Item private-inputs/sys/main.dol game/extracted/DATA/sys/
-          Copy-Item private-inputs/files/SONICRINGS.sel, private-inputs/files/hbm_part.rso game/extracted/DATA/files/
+          Copy-Item $usa/sys/main.dol game/extracted/DATA/sys/
+          Copy-Item $usa/files/SONICRINGS.sel, $usa/files/hbm_part.rso game/extracted/DATA/files/
           # a memory dump with the linked hbm_part.rso module (tools/rso.py), optional
-          foreach ($d in 'mem1_dump.bin', 'mem2_dump.bin') { if (Test-Path private-inputs/$d) { Copy-Item private-inputs/$d out/ } }
+          foreach ($d in 'mem1_dump.bin', 'mem2_dump.bin') { if (Test-Path $usa/$d) { Copy-Item $usa/$d out/ } }
           # the European release's main.dol (a separate build), optional
           if (Test-Path private-inputs/RSRP8P/sys/main.dol) {
             New-Item -ItemType Directory -Force game/inputs/RSRP8P/sys, game/inputs/RSRP8P/files | Out-Null
