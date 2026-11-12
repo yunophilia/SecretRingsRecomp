@@ -105,6 +105,16 @@ to play as on the Wii, where he runs on his own and B brakes.
 With auto-run off, the game sees button 1 (brake) held whenever the left stick is centred
 and B is not held, exactly as the mod's Wii Remote profile does.
 
+**Xbox button prompts:** the same mod replaces the game's Wii button prompts (menus, skill
+descriptions, tutorials) with HD Xbox, PS4 or PS5 ones, and this game loads it as it is.
+It is not bundled (its licence and Sega's artwork keep it out of this repository): download
+it from [GameBanana](https://gamebanana.com/mods/390496), then copy the `RSRE8P` folder
+from the zip into `textures/` next to `SecretRingsRecomp.exe`. For the European or
+Japanese release, name the folder `RSR` instead (it then applies to all three). For
+PlayStation prompts, first copy the files of `B - PS4Prompts` or `C - PS5Prompts` over
+those in `A - User Interface and Display`, as its README describes. Leave out the mod's
+Dolphin controller profiles; the controls above already match it.
+
 Bindings, the steering tilt range and steering inversion can be changed in the settings
 (launcher or in game) or in `config.ini`. F11 or Alt+Enter toggles fullscreen.
 
