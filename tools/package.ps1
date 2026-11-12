@@ -26,6 +26,49 @@ foreach ($k in "vs_keys.bin", "ps_keys.bin") {
 }
 & $exe --precompile-shaders $dstCache
 if ($LASTEXITCODE -ne 0) { throw "shader precompilation failed" }
+
+# Xbox button prompts: the Xbox textures of "HD Xbox One/Series (And PS4/5) GUI and
+# Controls" by Accelerate (gamebanana.com/mods/390496, CC BY-NC-ND 4.0), shipped unmodified
+# in textures/RSR (all three releases) with its credits. The mod's zip is pinned by file id
+# and MD5 and cached in out/ so a package is reproducible.
+$promptZip = Join-Path $root "out\gb390496_1756030.zip"
+$promptMd5 = "bc53140d85890cda227705c313eb3628"
+if (-not (Test-Path $promptZip) -or (Get-FileHash $promptZip -Algorithm MD5).Hash.ToLower() -ne $promptMd5) {
+    $ProgressPreference = "SilentlyContinue"
+    Invoke-WebRequest -Uri "https://gamebanana.com/dl/1756030" -OutFile $promptZip -UserAgent "SecretRingsRecomp-package"
+    if ((Get-FileHash $promptZip -Algorithm MD5).Hash.ToLower() -ne $promptMd5) { throw "button prompt pack: MD5 mismatch" }
+}
+$promptDir = Join-Path $dist "textures\RSR"
+if (Test-Path $promptDir) { Remove-Item -Recurse -Force $promptDir }
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$zip = [IO.Compression.ZipFile]::OpenRead($promptZip)
+$n = 0
+try {
+    foreach ($e in $zip.Entries) {
+        $name = $e.FullName -replace '\\', '/'
+        if (-not $name.StartsWith("RSRE8P/A - ") -or $name.EndsWith("/")) { continue }
+        $dst = Join-Path $promptDir ($name.Substring("RSRE8P/".Length) -replace '/', '\')
+        New-Item -ItemType Directory -Force (Split-Path $dst) | Out-Null
+        [IO.Compression.ZipFileExtensions]::ExtractToFile($e, $dst, $true)
+        $n++
+    }
+} finally { $zip.Dispose() }
+if ($n -eq 0) { throw "button prompt pack: no textures found" }
+@"
+Xbox button prompts for Sonic and the Secret Rings, unmodified, from:
+
+  "HD Xbox One/Series (And PS4/5) GUI and Controls" by Accelerate
+  https://gamebanana.com/mods/390496
+  Licence: Creative Commons Attribution-NonCommercial-NoDerivs 4.0
+  (https://creativecommons.org/licenses/by-nc-nd/4.0/)
+
+Credits listed by the mod: Accelerate (modder); SEGA/Sonic Team (the game and the Sonic
+Unleashed button prompts); upscaled with Zyro (Hostinger).
+
+Not part of SecretRingsRecomp's GPL-2.0 licence. Delete this folder for the original Wii
+prompts, or turn off "HD texture packs" in the settings.
+"@ | Set-Content (Join-Path $promptDir "CREDITS.txt")
+"button prompts: $n textures"
 @"
 You don't need to put anything here. Start SecretRingsRecomp.exe and select your own disc
 image (USA, Europe or Japan; ISO, RVZ, WIA or WBFS) in the file dialog, wherever it is on your PC.

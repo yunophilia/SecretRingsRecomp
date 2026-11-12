@@ -105,15 +105,16 @@ to play as on the Wii, where he runs on his own and B brakes.
 With auto-run off, the game sees button 1 (brake) held whenever the left stick is centred
 and B is not held, exactly as the mod's Wii Remote profile does.
 
-**Xbox button prompts:** the same mod replaces the game's Wii button prompts (menus, skill
-descriptions, tutorials) with HD Xbox, PS4 or PS5 ones, and this game loads it as it is.
-It is not bundled (its licence and Sega's artwork keep it out of this repository): download
-it from [GameBanana](https://gamebanana.com/mods/390496), then copy the `RSRE8P` folder
-from the zip into `textures/` next to `SecretRingsRecomp.exe`. For the European or
-Japanese release, name the folder `RSR` instead (it then applies to all three). For
-PlayStation prompts, first copy the files of `B - PS4Prompts` or `C - PS5Prompts` over
-those in `A - User Interface and Display`, as its README describes. Leave out the mod's
-Dolphin controller profiles; the controls above already match it.
+**Xbox button prompts:** releases include the Xbox prompts of
+["HD Xbox One/Series (And PS4/5) GUI and Controls"](https://gamebanana.com/mods/390496) by
+**Accelerate** (CC BY-NC-ND 4.0; credits: Accelerate, SEGA/Sonic Team, upscaled with Zyro),
+unmodified, in `textures/RSR/`: menus, skill descriptions and tutorials show HD Xbox
+buttons that match the controls above, in all three releases. They are not covered by this
+project's GPL-2.0 licence (see `textures/RSR/CREDITS.txt`). Delete that folder or turn off
+*HD texture packs* in the settings for the original Wii prompts. For PlayStation prompts,
+download the mod and copy the files of its `B - PS4Prompts` or `C - PS5Prompts` folder
+over those in `textures/RSR/A - User Interface and Display`. `tools/package.ps1` fetches
+the pinned mod file from GameBanana (checked by MD5) when packaging.
 
 Bindings, the steering tilt range and steering inversion can be changed in the settings
 (launcher or in game) or in `config.ini`. F11 or Alt+Enter toggles fullscreen.
