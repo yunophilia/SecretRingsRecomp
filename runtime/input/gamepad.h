@@ -11,6 +11,8 @@ struct GamepadState
     float lx = 0, ly = 0;      // left stick  -1..1
     float rx = 0, ry = 0;      // right stick -1..1
     float lt = 0, rt = 0;      // triggers 0..1
+    float steerButtons = 0;    // -1 / +1 while an unbound LB / RB is held (digital steering)
+    bool triggerShake = false; // both triggers held while neither is bound (shake)
     float px = -1, py = -1;    // absolute pointer override 0..1 (input scripts), -1 = none
 };
 
@@ -24,6 +26,8 @@ enum : uint16_t
 
 void Gamepad_Poll(int index, GamepadState& out);
 bool Gamepad_IsConnected(int index);
+bool Gamepad_Automated();       // input comes from a script (TAS, input script, auto-press)
+bool Gamepad_AutoRun();         // Sonic runs on his own (auto_run, or a script that expects it)
 bool Gamepad_RumbleAllowed();   // a person is playing: no input script, window focused
 void Gamepad_StopRumble();      // all motors off
 void Gamepad_ReloadBindings();  // config.ini bindings changed (settings UI)

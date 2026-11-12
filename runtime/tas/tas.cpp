@@ -176,6 +176,7 @@ size_t s_pc = 0;
 double s_cmdStart = -1;
 Input s_background[4];
 int s_players = 1;   // "players N": controllers the game sees while a script runs
+bool s_autoRun = true;   // "autorun on|off": scripts assume the original auto-run unless they say otherwise
 GamepadState s_pads[4];   // players 2-4, computed with player 1's poll
 std::vector<int> s_repeatLeft;
 std::mutex s_fileMutex;
@@ -299,6 +300,14 @@ void LoadFile(const std::filesystem::path& path, int depth)
         if (w == "players")
         {
             if (!(ss >> s_players) || s_players < 1 || s_players > 4) bad();
+            continue;
+        }
+        if (w == "autorun")
+        {
+            // "autorun off": the player's no-auto-run controls (config auto_run = false)
+            std::string v;
+            if (!(ss >> v) || (v != "on" && v != "off")) bad();
+            s_autoRun = v == "on";
             continue;
         }
         if (w == "filemark") c.op = Op::FileMark;
@@ -605,6 +614,7 @@ void Tas_SetTelemetry(const char* csvPath) { s_csvPath = csvPath; }
 bool Tas_Active() { return s_active; }
 
 int Tas_Players() { return s_players; }
+bool Tas_AutoRun() { return s_autoRun; }
 
 bool Tas_Poll(int index, GamepadState& out)
 {

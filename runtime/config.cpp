@@ -56,9 +56,14 @@ std::string Config_Text(const Config& c)
     s += std::format("rumble = {}\n", Bool(c.rumble));
     s += "; play sounds the game sends to the Wii Remote speaker\n";
     s += std::format("remote_speaker = {}\n", Bool(c.remoteSpeaker));
+    s += "; false: Sonic runs while the left stick is pushed and stops when it is released;\n";
+    s += "; true: he runs on his own and the brake button brakes, as on the Wii\n";
+    s += std::format("auto_run = {}\n", Bool(c.autoRun));
     s += "; controller bindings: A B X Y LB RB LT RT START BACK LS RS UP DOWN LEFT RIGHT NONE\n";
     s += "; (BACK, the View button, opens the settings overlay; Back+Start together is HOME;\n";
-    s += ";  the left stick steers by tilting the remote; pulling it down tilts back to backtrack)\n";
+    s += ";  the left stick steers by tilting the remote and runs unless auto_run is on; pulling it\n";
+    s += ";  down tilts back to backtrack; the right stick steers, thrusts (down) and tilts back (up);\n";
+    s += ";  LB/RB steer when not bound; LT+RT together shake)\n";
     for (int i = 0; i < 12; i++) s += std::format("{} = {}\n", kBindActions[i], c.bind[i]);
     s += "\n[Keyboard]\n";
     s += "; keyboard and mouse bindings, comma-separated: A-Z 0-9 F2-F10 F12 SPACE ENTER BACKSPACE TAB\n";
@@ -168,6 +173,7 @@ void Config_Load(const std::string& path)
         {
             if (key == "rumble") c.rumble = ParseBool(val);
             if (key == "remote_speaker") c.remoteSpeaker = ParseBool(val);
+            if (key == "auto_run") c.autoRun = ParseBool(val);
             if (key == "tilt_range") c.tiltRange = std::clamp((float)atof(val.c_str()), 10.0f, 90.0f);
             if (key == "tilt_sign") c.tiltSign = atof(val.c_str()) < 0 ? -1.0f : 1.0f;
             for (int i = 0; i < 12; i++)

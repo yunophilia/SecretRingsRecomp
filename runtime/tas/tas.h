@@ -15,6 +15,7 @@ bool Tas_Active();
 // script is loaded.
 bool Tas_Poll(int index, GamepadState& out);
 int Tas_Players();   // controllers connected while a script runs ("players N")
+bool Tas_AutoRun();  // the script's "autorun on|off" (default on)
 // Once per presented frame (GX thread): telemetry rows and screenshot requests.
 void Tas_OnPresent(void (*saveShot)(const char* path));
 // Disc file reads, for "until file <name>".

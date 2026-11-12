@@ -132,6 +132,13 @@ static void ApplyBindings(GamepadState& out, uint32_t phys, float lt, float rt)
     for (int i = 0; i < 10; i++)
         if (phys & mask[i]) b |= logical[i];
     out.buttons |= b;
+    // LB / RB steer left / right while no action is bound to them
+    uint32_t bound = 0;
+    for (int i = 0; i < 12; i++) bound |= mask[i];
+    if ((phys & PAD_LB) && !(bound & PAD_LB)) out.steerButtons -= 1.0f;
+    if ((phys & PAD_RB) && !(bound & PAD_RB)) out.steerButtons += 1.0f;
+    // LT + RT together shake while neither trigger is bound
+    if (!(bound & (3u << 16)) && lt > 0.6f && rt > 0.6f) out.triggerShake = true;
     // analog triggers keep their value when bound to themselves
     out.rt = mask[10] == (1u << 17) ? rt : ((phys & mask[10]) ? 1.0f : 0.0f);
     out.lt = mask[11] == (1u << 16) ? lt : ((phys & mask[11]) ? 1.0f : 0.0f);
@@ -311,9 +318,17 @@ void Gamepad_Poll(int index, GamepadState& out)
     if (any) out.connected = true;
 }
 
+bool Gamepad_Automated() { return !s_script.empty() || g_autoPress || Tas_Active(); }
+
+bool Gamepad_AutoRun()
+{
+    if (Tas_Active()) return Tas_AutoRun();
+    return g_config.autoRun || !s_script.empty() || g_autoPress;   // input scripts assume the original auto-run
+}
+
 bool Gamepad_RumbleAllowed()
 {
-    if (!s_script.empty() || g_autoPress || Tas_Active()) return false;
+    if (Gamepad_Automated()) return false;
     HWND hwnd = (HWND)Video_HWND();
     return hwnd && GetForegroundWindow() == hwnd;
 }

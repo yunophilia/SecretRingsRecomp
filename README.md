@@ -82,19 +82,28 @@ HLSL compiler in use, and any shader or D3D error); please attach it to an issue
 
 ## Controls (default)
 
+Based on the [Xbox controls mod for Dolphin](https://gamebanana.com/mods/390496) by
+default, including its choice to turn off auto-run: Sonic runs while the left stick is
+pushed and stops when you let go. Turn on *Auto-run* in the settings (`auto_run = true`)
+to play as on the Wii, where he runs on his own and B brakes.
+
 | Controller | Keyboard | Wii Remote (sideways) | Action |
 |---|---|---|---|
-| Left stick left/right | A / D | tilt left/right | Steer |
-| Left stick down (past half) or LT | S | turn upside down | Backtrack |
+| Left stick | W / A / S / D | tilt (and 1 released) | Run (push any way), steer (left/right) |
+| Left stick down (past half) | S | turn upside down | Backtrack |
+| Right stick left/right, LB / RB | | tilt left/right | Steer |
+| Right stick down | J / left click | thrust forward | Homing attack / air dash |
+| Right stick up | | turn upside down | Backtrack |
 | A | Space | 2 | Jump |
-| X or RT | J / left click | thrust forward | Homing attack / air dash |
-| B | K | 1 | Brake |
-| Y | L | shake | Shake |
-| RB / LB | Left Shift / Q | A / B | Wii A / Wii B |
-| Start | Enter | + | Pause |
+| B | K | 1 | Run straight (auto-run off) / brake (auto-run on) |
+| X, or LT + RT | L | shake | Shake |
+| Start | Enter | + and A | Pause / confirm |
 | D-pad | Arrow keys | D-pad (turned a quarter) | Menus |
 | View (Back) | F1 | | Settings overlay |
 | View + Start | H | HOME | HOME menu |
+
+With auto-run off, the game sees button 1 (brake) held whenever the left stick is centred
+and B is not held, exactly as the mod's Wii Remote profile does.
 
 Bindings, the steering tilt range and steering inversion can be changed in the settings
 (launcher or in game) or in `config.ini`. F11 or Alt+Enter toggles fullscreen.

@@ -135,10 +135,14 @@ void InputTab(SettingsHost host)
     Check(host, "Rumble", c.rumble, false, "Vibrate the controller where the Wii Remote would rumble.");
     ImGui::TextDisabled("View (Back) opens these settings. View + Start is the Wii HOME button.");
 
+    Check(host, "Auto-run", c.autoRun, false,
+          "Off (default): Sonic runs while the left stick is pushed and stops when you let go; B runs straight. "
+          "On: he runs on his own and B brakes, as with the Wii Remote.");
+
     ImGui::SeparatorText("Steering");
     if (ImGui::SliderFloat("Remote tilt at full stick", &c.tiltRange, 10.0f, 90.0f, "%.0f degrees"))
         Changed(host, false);
-    Help("How far the left stick tilts the Wii Remote. Lower values steer more gently.");
+    Help("How far the sticks (and LB/RB) tilt the Wii Remote. Lower values steer more gently.");
     bool inverted = c.tiltSign < 0;
     if (ImGui::Checkbox("Invert steering", &inverted))
     {
@@ -148,7 +152,8 @@ void InputTab(SettingsHost host)
     Help("Swap left and right.");
 
     ImGui::SeparatorText("Button bindings");
-    static const char* actions[12] = { "Jump (Wii 2)", "Homing attack (thrust the Remote)", "Brake / back (Wii 1)",
+    ImGui::TextDisabled("Also: right stick steers, down = homing attack, up = backtrack; LB/RB steer and LT+RT shake while unbound.");
+    static const char* actions[12] = { "Jump (Wii 2)", "Homing attack (thrust the Remote)", "Brake, or run without auto-run (Wii 1)",
                                        "Shake the Remote", "Wii A", "Wii B", "Pause (Wii +)",
                                        "Wii -", "Wii 1 (extra)", "Wii 2 (extra)", "Thrust Remote forward",
                                        "Tilt Remote back (backtrack)" };

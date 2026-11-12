@@ -26,11 +26,18 @@ struct Config
     bool remoteSpeaker = true;   // play Wii Remote speaker sounds on the PC
     float tiltRange = 60.0f;     // steering: Wii Remote roll (degrees) at full stick deflection
     float tiltSign = 1.0f;       // -1 swaps the steering direction
+    // false (default): Sonic runs only while the left stick is pushed (or the brake button,
+    // then "run", is held) and stops when it is released, as in the GameBanana Xbox
+    // controls mod and Project Reignition. true: he runs on his own, as on the Wii.
+    bool autoRun = false;
     // button bindings, action -> controller button name (A, B, X, Y, LB, RB, LT, RT,
     // START, BACK, LS, RS, UP, DOWN, LEFT, RIGHT or NONE); see config.cpp for actions.
-    // Wii "-" is unbound by default: the game does not use it, and BACK (the View button)
+    // Defaults follow the GameBanana Xbox controls mod (gamebanana.com/mods/390496):
+    // A jump, B brake/run, X shake, Start = + and Wii A. Also built in: the right stick
+    // steers, thrusts (down: homing attack) and tilts back (up), LB/RB steer when not
+    // bound, LT+RT together shake. Wii B and "-" are unbound: BACK (the View button)
     // opens the settings overlay.
-    std::string bind[12] = { "A", "X", "B", "Y", "RB", "LB", "START", "NONE", "LS", "RS", "RT", "LT" };
+    std::string bind[12] = { "A", "NONE", "B", "X", "START", "NONE", "START", "NONE", "LS", "RS", "NONE", "NONE" };
     // [Keyboard] keyboard and mouse bindings: the 12 actions above, then HOME, the D-pad
     // and the movement stick (see kKeyActions). Each is a comma-separated list of key
     // names (SPACE, J, LSHIFT, MOUSE1, ...; see input/gamepad.cpp) or NONE.

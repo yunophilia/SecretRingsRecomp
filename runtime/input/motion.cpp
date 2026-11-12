@@ -89,22 +89,24 @@ void Motion_Step(int chan, float dt)
     const GamepadState& p = s.pad;
     auto pressed = [&](uint16_t b) { return (p.buttons & b) && !(s.prevPad.buttons & b); };
 
-    // Steering: left stick X sets the roll angle (full deflection = 60 degrees)
-    float steer = std::clamp(p.lx, -1.0f, 1.0f) * g_config.tiltRange * (PI / 180.0f);
+    // Steering: the stick X axes and unbound LB / RB set the roll angle (full deflection =
+    // tilt_range degrees)
+    float steer = std::clamp(p.lx + p.rx + p.steerButtons, -1.0f, 1.0f) * g_config.tiltRange * (PI / 180.0f);
     s.roll = Approach(s.roll, steer, 8.0f, dt);
 
     // Backtrack: the game only moves Sonic backwards with the remote turned upside down
-    // (tilted all the way back), so stick down / LT past halfway flips it over. Pushing
-    // the stick up tilts it forward a little.
-    float back = std::max(-p.ly, p.lt);
+    // (tilted all the way back), so left stick down / right stick up / the tilt-back
+    // binding past halfway flips it over. Pushing the left stick up tilts it forward a little.
+    float back = std::max({ -p.ly, p.ry, p.lt });
     float pitchTarget = back > 0.5f ? 180.0f : back < -0.3f ? back * 45.0f : 0.0f;
     s.pitch = Approach(s.pitch, pitchTarget * (PI / 180.0f), 14.0f, dt);
 
-    // Thrust forward (X / RT): homing attack, speed break forward motion
-    bool thrust = pressed(PAD_X) || (p.rt > 0.6f && s.prevPad.rt <= 0.6f);
+    // Thrust forward (the homing attack and thrust bindings, right stick down): homing
+    // attack, speed break forward motion
+    bool thrust = pressed(PAD_X) || (p.rt > 0.6f && s.prevPad.rt <= 0.6f) || (p.ry < -0.6f && s.prevPad.ry >= -0.6f);
     if (thrust) StartPulse(s.remote, 3.5f, 0.0f, 0.0f, 0.15f);
-    // Shake (Y)
-    if (pressed(PAD_Y)) s.shakeT = 0.0f;
+    // Shake (its binding, or LT + RT together)
+    if (pressed(PAD_Y) || (p.triggerShake && !s.prevPad.triggerShake)) s.shakeT = 0.0f;
     if (s.shakeT >= 0.0f)
     {
         s.shakeT += dt;
@@ -151,7 +153,18 @@ void Motion_FillStatus(int chan, uint32_t st, uint32_t size, bool connected)
     }
     uint16_t b = 0;
     if (p.buttons & PAD_A) b |= WPB_TWO;     // jump
-    if (p.buttons & PAD_B) b |= WPB_ONE;     // brake
+    if (Gamepad_AutoRun())
+    {
+        if (p.buttons & PAD_B) b |= WPB_ONE;   // brake (Sonic runs on his own, as on the Wii)
+    }
+    else
+    {
+        // No auto-run (the GameBanana Xbox controls mod's Wii Remote profile): 1 (brake) is
+        // held unless the left stick is pushed or the brake binding (then "run") is held,
+        // so Sonic runs while the stick is pushed and stops when it is released.
+        bool run = p.lx != 0.0f || p.ly != 0.0f || (p.buttons & PAD_B);
+        if (!run) b |= WPB_ONE;
+    }
     if (p.buttons & PAD_RB) b |= WPB_A;
     if (p.buttons & PAD_LB) b |= WPB_B;
     if (p.buttons & PAD_START) b |= WPB_PLUS;

@@ -1,0 +1,23 @@
+# Controls without auto-run (config auto_run = false, the default): from a fresh save into
+# Lost Prologue, then Sonic should stand still with the stick centred, run while it is
+# pushed, stop when it is released, and run straight while B is held. Compare the
+# distance column between the logged phases.
+autorun off
+include boot_stage1.tas
+watch dist f32 9102cd50
+wait 4
+log idle
+wait 3
+shot nar_idle
+log stick
+hold 3 LX=0.3
+shot nar_stick
+log released
+wait 3
+shot nar_released
+log b_held
+hold 3 B
+shot nar_b
+log end
+wait 1
+quit
