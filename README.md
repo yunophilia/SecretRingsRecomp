@@ -60,6 +60,26 @@ the disc: an NTSC console for USA and Japan, and a PAL console with EuRGB60 (60 
 Europe. Each release keeps its own saves (`nand/title/00010000/<title ID>/data`), as on a
 real Wii.
 
+### Steam Deck and Linux (Proton)
+
+There is no native Linux build; the Windows build is meant to run through Proton. The
+renderer has the fixes BlackKnightRecomp (the same runtime) needed there: its generated
+shaders avoid `isnan()`, which Wine's HLSL compiler lacks (a black screen with audio
+playing), shaders Proton 10 compiles itself get their colours fixed, and releases include
+precompiled shaders in `shadercache/`, so keep that folder next to the exe. **Not tested
+under Proton with this game yet**; reports are welcome.
+
+1. Unzip the release somewhere in your home folder and start it once from Desktop Mode or
+   your desktop: the launcher installs the game data from your disc image.
+2. In Steam: *Games > Add a Non-Steam Game to My Library*, browse to
+   `SecretRingsRecomp.exe` (file type filter "All files").
+3. In the shortcut's *Properties > Compatibility*, tick *Force the use of a specific Steam
+   Play compatibility tool* and pick Proton Experimental, 10.0 or 9.0.
+
+A Steam Deck acts as an Xbox controller, so the table below applies. If the screen stays
+black, `SecretRingsRecomp.log` next to the exe says why (it logs "running under Wine", the
+HLSL compiler in use, and any shader or D3D error); please attach it to an issue.
+
 ## Controls (default)
 
 | Controller | Keyboard | Wii Remote (sideways) | Action |
