@@ -1,0 +1,13 @@
+# Shared prefix: boot to the world wheel on the save in slot 1. Waits for the title
+# screen's menu file instead of counting presses from boot (a press during a screen
+# transition is lost, so fixed press counts break when loading times change), then
+# presses with gaps long enough for each transition: title, Adventure, slot 1.
+filemark
+until file adv_main_menu mash A period 1.4 timeout 90
+wait 4
+tap A
+wait 4
+tap A
+wait 4
+tap A
+wait 5

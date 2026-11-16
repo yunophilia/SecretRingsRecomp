@@ -21,6 +21,14 @@ starts the game minimized and collects `out/tas/<tag>.log`, `<tag>.csv` and scre
 below-normal priority (`-Full` uses the real settings). Game options for scripted runs:
 `--tas <script> --telemetry <csv> --nand <dir> --mute --scale <n>`.
 
+On Linux, `tools/tas_run.sh -s <script> [-6] [-S save] [-t tag] [-F] [-x scale]` does the
+same with the same scripts, saves and outputs (docs/linux.md).
+
+Scripts that start from a save go to the world wheel through `to_worlds.tas`: it waits
+for the title screen's menu file, then presses with gaps long enough for each screen
+transition. Fixed press counts from boot broke whenever loading times changed (a press
+during a transition is lost).
+
 ## Scripts (tools/tas)
 
 | script | what it does |
@@ -39,6 +47,7 @@ below-normal priority (`-Full` uses the real settings). Game options for scripte
 | `boss_<world>.tas` | `allworlds` save: the world's boss (Evil Foundry, Pirate Storm, Night Palace's Boss Duel) or, without one, the last mission in its list; 50 s |
 | `no_autorun.tas` | fresh save, auto-run off: Sonic stands still with the stick centred, runs while it is pushed or B is held |
 | `last_chapter.tas` | `allworlds` save: Night Palace's Last Chapter, 150 s |
+| `to_worlds.tas` | shared prefix: boot to the world wheel on the save in slot 1 (waits for the title screen's menu file) |
 | `world_<name>.tas` | `allworlds` save: a world's first mission, 45 s of play with screenshots (compare `-Fps60` with 30) |
 | `find_player.tas`, `find_jump.tas` | memory dumps while steering / jumping; `find_pos.py` searches them for moving float vectors |
 

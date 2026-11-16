@@ -1,21 +1,25 @@
-# Builds and publishes a release when a version tag (v*.*.*) is pushed.
+# Builds and publishes a release when a version tag (v*.*.*) is pushed: the Windows zip and
+# the Linux AppImage.
 #
 # The recompiled code is generated from the game's main.dol, which is not in this
 # repository: the workflow reads it (with the other build inputs) from a private
 # repository using the PRIVATE_FILES_TOKEN secret of the "release" environment (a
-# fine-grained token with read-only Contents access to that repository). Nothing from it is uploaded or published; only
-# the built exe goes into the release.
+# fine-grained token with read-only Contents access to that repository). Nothing from it
+# is uploaded or published; only the built programs go into the release. The two build
+# jobs use the environment and start together, so one approval covers both.
 name: Release
 
 on:
   push:
     tags: ["v*.*.*"]
 
+# read-only by default: the build jobs run third-party code (the toolchain PPA, the
+# FetchContent dependencies, appimagetool); only the publish job can write (the release)
 permissions:
-  contents: write   # create the release
+  contents: read
 
 jobs:
-  build:
+  windows:
     runs-on: windows-2025
     # PRIVATE_FILES_TOKEN is an environment secret: the job only gets it once a
     # required reviewer approves the run.
@@ -29,6 +33,7 @@ jobs:
           repository: yunophilia/SecretRingsRecomp-private
           token: ${{ secrets.PRIVATE_FILES_TOKEN }}
           path: private-inputs
+          persist-credentials: false   # the token is not kept in the checkout
 
       - name: Place build inputs
         shell: pwsh
@@ -66,35 +71,165 @@ jobs:
           python tools/build_generated.py
 
       - name: Build
-        shell: cmd
+        shell: pwsh
         env:
           SRR_VERSION: ${{ github.ref_name }}   # shown in the launcher and the overlay
         run: |
-          call tools\dev_build.bat || (type out\build.log & exit /b 1)
+          ./tools/dev_build.ps1
+          if ($LASTEXITCODE -ne 0) { Get-Content out/build.log; exit 1 }
 
       - name: Package
         shell: pwsh
         run: |
           powershell -ExecutionPolicy Bypass -File tools/package.ps1
-          $zip = "SecretRingsRecomp-${{ github.ref_name }}-windows-x64.zip"
-          Compress-Archive -Path dist/SecretRingsRecomp -DestinationPath $zip
-          "ZIP=$zip" >> $env:GITHUB_ENV
+          Compress-Archive -Path dist/SecretRingsRecomp -DestinationPath "SecretRingsRecomp-${{ github.ref_name }}-windows-x64.zip"
 
-      - name: Publish the release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-zip
+          path: SecretRingsRecomp-${{ github.ref_name }}-windows-x64.zip
+
+      # the precompiled shaders also go into the AppImage (DXBC works the same under DXVK)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shadercache
+          path: dist/SecretRingsRecomp/shadercache
+
+      # whether the European code was built, for the release notes
+      - name: Record the releases built
         shell: pwsh
+        run: if (Test-Path generated/eu) { "eu" | Set-Content releases.txt } else { "usa" | Set-Content releases.txt }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: releases
+          path: releases.txt
+
+  linux:
+    # Ubuntu 22.04 (glibc 2.35) so the AppImage runs on older distributions too; a newer
+    # libstdc++ comes from the toolchain PPA and is linked statically.
+    runs-on: ubuntu-22.04
+    environment: release
+    steps:
+      - uses: actions/checkout@v4
+
+      # docs/linux.md lists the same packages. First, so the packages' install scripts (run
+      # as root) run before the private inputs or their token are on the runner.
+      - name: Install build tools and libraries
+        run: |
+          sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+          sudo apt-get update
+          sudo apt-get install -y clang-15 g++-13 ninja-build bison flex libjson-perl libvulkan-dev \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxss-dev libxtst-dev libxkbcommon-dev \
+            libxfixes-dev libxinerama-dev libwayland-dev wayland-protocols libdecor-0-dev libegl-dev libgl-dev \
+            libdrm-dev libgbm-dev libasound2-dev libpulse-dev libpipewire-0.3-dev libudev-dev libdbus-1-dev \
+            libibus-1.0-dev libusb-1.0-0-dev
+
+      - name: Fetch build inputs (private)
+        uses: actions/checkout@v4
+        with:
+          repository: yunophilia/SecretRingsRecomp-private
+          token: ${{ secrets.PRIVATE_FILES_TOKEN }}
+          path: private-inputs
+          persist-credentials: false   # the token is not kept in the checkout
+
+      - name: Place build inputs
+        run: |
+          usa=private-inputs/RSRE8P
+          mkdir -p game/extracted/DATA/sys game/extracted/DATA/files out
+          cp $usa/sys/main.dol game/extracted/DATA/sys/
+          cp $usa/files/SONICRINGS.sel $usa/files/hbm_part.rso game/extracted/DATA/files/
+          for d in mem1_dump.bin mem2_dump.bin; do [ -f $usa/$d ] && cp $usa/$d out/; done
+          if [ -f private-inputs/RSRP8P/sys/main.dol ]; then
+            mkdir -p game/inputs/RSRP8P/sys game/inputs/RSRP8P/files
+            cp private-inputs/RSRP8P/sys/main.dol game/inputs/RSRP8P/sys/
+            cp private-inputs/RSRP8P/files/SONICRINGS.sel game/inputs/RSRP8P/files/
+            if [ -f private-inputs/RSRP8P/mem1_dump.bin ]; then mkdir -p out/eu; cp private-inputs/RSRP8P/mem1_dump.bin out/eu/; fi
+          fi
+          rm -rf private-inputs
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Generate the recompiled code
+        run: |
+          if [ -f out/mem1_dump.bin ] || [ -f out/mem2_dump.bin ]; then python tools/rso.py; fi
+          if [ -f out/eu/mem1_dump.bin ]; then python tools/rso.py out/eu/mem1_dump.bin --out out/eu; fi
+          python tools/build_generated.py
+
+      - name: Build
+        env:
+          SRR_VERSION: ${{ github.ref_name }}
+        run: |
+          cmake --preset linux-clang -DCMAKE_C_COMPILER=clang-15 -DCMAKE_CXX_COMPILER=clang++-15
+          cmake --build --preset linux-clang
+
+      - name: Stage the AppImage contents
+        run: tools/package_linux.sh -S
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-appdir
+          path: dist/AppDir
+
+  appimage:
+    needs: [windows, linux]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-appdir
+          path: dist/AppDir
+      - uses: actions/download-artifact@v4
+        with:
+          name: shadercache
+          path: shadercache
+      - name: Make the AppImage
+        run: tools/package_linux.sh -A dist/AppDir -c shadercache -v "${{ github.ref_name }}" -b build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-appimage
+          path: dist/SecretRingsRecomp-${{ github.ref_name }}-linux-x86_64.AppImage
+
+  publish:
+    needs: [windows, appimage]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write   # create the release
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-zip
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-appimage
+      - uses: actions/download-artifact@v4
+        with:
+          name: releases
+      - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          if grep -q eu releases.txt; then versions="the USA (RSRE8P), European (RSRP8P) or Japanese (RSRJ8P) version"
+          else versions="the USA (RSRE8P) or Japanese (RSRJ8P) version"; fi
           # one line per paragraph: release notes keep single line breaks. Edit the notes on
           # the release page afterwards to add what changed.
-          $versions = if (Test-Path generated/eu) { "the USA (RSRE8P), European (RSRP8P) or Japanese (RSRJ8P) version" } else { "the USA (RSRE8P) or Japanese (RSRJ8P) version" }
-          $notes = @"
-          Sonic and the Secret Rings (Wii), statically recompiled to run natively on Windows.
+          cat > notes.md <<EOF
+          Sonic and the Secret Rings (Wii), statically recompiled to run natively on Windows and Linux.
 
-          **This release contains no game data.** You need your own copy of $versions as a disc image: ISO, RVZ, WIA or WBFS. Unzip, start ``SecretRingsRecomp.exe`` and select the image when the launcher asks; the game data is installed next to the exe.
+          **This release contains no game data.** You need your own copy of $versions as a disc image: ISO, RVZ, WIA or WBFS.
 
-          Includes the Xbox button prompts of [HD Xbox One/Series (And PS4/5) GUI and Controls](https://gamebanana.com/mods/390496) by Accelerate (CC BY-NC-ND 4.0), unmodified, in ``textures/RSR``.
+          **Windows:** unzip, start \`SecretRingsRecomp.exe\` and select the image when the launcher asks; the game data is installed next to the exe.
+
+          **Linux and Steam Deck:** make the \`.AppImage\` executable and start it; the launcher asks for the image and installs the game data into \`~/.local/share/SecretRingsRecomp\`. Needs a Vulkan driver.
+
+          Includes the Xbox button prompts of [HD Xbox One/Series (And PS4/5) GUI and Controls](https://gamebanana.com/mods/390496) by Accelerate (CC BY-NC-ND 4.0), unmodified, in \`textures/RSR\`.
 
           See the [README](https://github.com/${{ github.repository }}#readme) for controls and settings.
-          "@
-          gh release create "${{ github.ref_name }}" "$env:ZIP" --title "${{ github.ref_name }}" --notes $notes
+          EOF
+          sed -i 's/^          //' notes.md
+          gh release create "${{ github.ref_name }}" --repo "${{ github.repository }}" \
+            "SecretRingsRecomp-${{ github.ref_name }}-windows-x64.zip" \
+            "SecretRingsRecomp-${{ github.ref_name }}-linux-x86_64.AppImage" \
+            --title "${{ github.ref_name }}" --notes-file notes.md

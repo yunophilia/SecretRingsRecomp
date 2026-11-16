@@ -1,10 +1,6 @@
 # allworlds save: Night Palace, Last Chapter (the last mission: the final movie,
 # then whatever follows), 150 s of play with screenshots (compare the _30 and _60 runs)
-wait 8
-repeat 9
-tap A
-wait 1.4
-end
+include to_worlds.tas
 repeat 7
 tap DOWN
 wait 1.5

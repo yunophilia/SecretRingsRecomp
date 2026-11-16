@@ -1,7 +1,7 @@
 # SecretRingsRecomp
 
 A static recompilation of **Sonic and the Secret Rings** (Wii: USA `RSRE8P`, Europe
-`RSRP8P`, Japan `RSRJ8P`) to native Windows x64. It is a sister project of
+`RSRP8P`, Japan `RSRJ8P`) to native Windows x64 and Linux x86-64 (including the Steam Deck). It is a sister project of
 [BlackKnightRecomp](https://github.com/yunophilia/BlackKnightRecomp): the recompiler and
 most of the runtime are shared, retargeted to this game's executable and its older
 (2006/2007) Wii SDK. The goal: play it natively on PC with a normal controller instead of
@@ -33,7 +33,7 @@ main.dol ──► tools/analyze.py ──► tools/recomp.py ──► generate
 * **IOS** (`runtime/ios`): high-level `/dev/di`, `/dev/fs` (NAND in `nand/` next to the exe;
   saves land in `nand/title/00010000/52535245/data`), `/dev/es`, `/dev/stm`.
 * **Graphics** (`runtime/gx`): the GX FIFO is decoded and rendered with Direct3D 11 on its own
-  thread, with per-state generated shaders (TEV, lighting, texgen, indirect texturing, fog),
+  thread (on Linux through dxvk-native, Direct3D 11 on Vulkan), with per-state generated shaders (TEV, lighting, texgen, indirect texturing, fog),
   EFB copies as render-to-texture, 3x internal resolution by default, a disk shader cache and
   Dolphin-format HD texture packs.
 * **Input** (`runtime/input`): the WPAD library is replaced at the API level; KPAD runs
@@ -43,7 +43,10 @@ main.dol ──► tools/analyze.py ──► tools/recomp.py ──► generate
   pulses, and "tilt back" turns the remote upside down (what the game checks for
   backtracking).
 * **Audio** (`runtime/audio`): the AX DSP microcode is replaced by a port of Dolphin's AX
-  HLE; output goes through XAudio2.
+  HLE; output goes through XAudio2 (SDL3 audio on Linux).
+* **Platform** (`runtime/platform`): window, input, audio, dialogs, fibers and memory for
+  Win32 and for Linux (SDL3, dxvk-native, vkd3d-shader), shared with BlackKnightRecomp;
+  see [docs/linux.md](docs/linux.md).
 
 ## Playing
 
@@ -60,25 +63,19 @@ the disc: an NTSC console for USA and Japan, and a PAL console with EuRGB60 (60 
 Europe. Each release keeps its own saves (`nand/title/00010000/<title ID>/data`), as on a
 real Wii.
 
-### Steam Deck and Linux (Proton)
+### Linux and Steam Deck
 
-There is no native Linux build; the Windows build is meant to run through Proton. The
-renderer has the fixes BlackKnightRecomp (the same runtime) needed there: its generated
-shaders avoid `isnan()`, which Wine's HLSL compiler lacks (a black screen with audio
-playing), shaders Proton 10 compiles itself get their colours fixed, and releases include
-precompiled shaders in `shadercache/`, so keep that folder next to the exe. **Not tested
-under Proton with this game yet**; reports are welcome.
+Download `SecretRingsRecomp-<version>-linux-x86_64.AppImage`, make it executable and start
+it: the launcher asks for your disc image and installs the game data into
+`~/.local/share/SecretRingsRecomp` (with the log, `config.ini`, saves and shaders). It needs
+x86-64, glibc 2.35 or newer and a Vulkan driver (Mesa or NVIDIA). On a Steam Deck, add the
+AppImage to Steam as a non-Steam game without a Proton version (it is a native program).
+Details, building and testing: [docs/linux.md](docs/linux.md).
 
-1. Unzip the release somewhere in your home folder and start it once from Desktop Mode or
-   your desktop: the launcher installs the game data from your disc image.
-2. In Steam: *Games > Add a Non-Steam Game to My Library*, browse to
-   `SecretRingsRecomp.exe` (file type filter "All files").
-3. In the shortcut's *Properties > Compatibility*, tick *Force the use of a specific Steam
-   Play compatibility tool* and pick Proton Experimental, 10.0 or 9.0.
-
-A Steam Deck acts as an Xbox controller, so the table below applies. If the screen stays
-black, `SecretRingsRecomp.log` next to the exe says why (it logs "running under Wine", the
-HLSL compiler in use, and any shader or D3D error); please attach it to an issue.
+The Windows build also runs through Proton: its shaders avoid `isnan()`, which Wine's HLSL
+compiler lacks, shaders Proton 10 compiles itself get their colours fixed, and releases
+include precompiled shaders in `shadercache/` (keep that folder next to the exe). The
+native AppImage is the better choice on Linux.
 
 ## Controls (default)
 
@@ -125,9 +122,10 @@ Requirements: Windows 10+, Visual Studio 2022 or newer (Build Tools are enough) 
 workload and the "C++ Clang Compiler for Windows" component, CMake 3.21+ and Ninja (both ship
 with Visual Studio), Python 3.10+ (with numpy and Pillow for the test tools), and an internet
 connection for the first configure (it downloads [nod](https://github.com/encounter/nod) and
-Dear ImGui). `tools/dev_build.bat` sets up the Visual Studio environment and builds.
+Dear ImGui). `tools/dev_build.ps1` sets up the Visual Studio environment and builds. On
+Linux the steps are the same with the `linux-clang` preset ([docs/linux.md](docs/linux.md)).
 
-1. Configure and build the installer: `tools\dev_build.bat`
+1. Configure and build the installer: `powershell -ExecutionPolicy Bypass -File tools\dev_build.ps1`
 2. Install the game data: `out\srr_install path\to\image` (any of the three releases)
 3. Extract the build inputs of the releases you did not install into `game/inputs/`:
    `out\srr_install --build-inputs path\to\other-image`. The USA or Japanese main.dol is
@@ -141,7 +139,7 @@ Dear ImGui). `tools/dev_build.bat` sets up the Visual Studio environment and bui
    to the exe. Move it to `out/`, run `python tools/rso.py`, then step 4 again. For the
    European release, run it with that release's data, put the dump in `out/eu/` and run
    `python tools/rso.py out/eu/mem1_dump.bin --out out/eu`.
-6. Build the game: `tools\dev_build.bat` → `out\SecretRingsRecomp.exe`
+6. Build the game: `tools\dev_build.ps1` again → `out\SecretRingsRecomp.exe`
 
 ## Settings
 
