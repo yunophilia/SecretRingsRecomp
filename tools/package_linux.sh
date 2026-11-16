@@ -38,10 +38,50 @@ stage() {   # stage <AppDir>: everything except the shader cache
     cp "$build/vkd3d_build-prefix/src/vkd3d_build/LICENSE" "$lic/vkd3d-shader.txt"
     cp "$root/data/linux/licenses/dxvk.txt" "$lic/dxvk.txt"
     cp "$root/data/linux/licenses/nod.txt" "$lic/nod.txt"
-    cp "$build/deps/libarchive/src/srr_libarchive/COPYING" "$lic/libarchive.txt"
-    cp "$build/deps/zlib/src/srr_zlib/LICENSE" "$lic/zlib.txt"
-    cp "$build/deps/xz/src/srr_lzma/COPYING.0BSD" "$lic/liblzma.txt"
-    cp "$build/licenses/nlohmann-json-LICENSE.MIT.txt" "$lic/nlohmann-json.txt"
+    prompts "$bin/textures/RSR"
+}
+
+# prompts <dir>: the Xbox button prompts of "HD Xbox One/Series (And PS4/5) GUI and
+# Controls" by Accelerate (gamebanana.com/mods/390496, CC BY-NC-ND 4.0), unmodified, as
+# tools/package.ps1 does for Windows: the mod's zip pinned by file id and MD5
+prompts() {
+    local dst=$1 zip=$root/out/gb390496_1756030.zip md5=bc53140d85890cda227705c313eb3628
+    if [ ! -f "$zip" ] || [ "$(md5sum < "$zip" | cut -d' ' -f1)" != $md5 ]; then
+        curl -fsSL -A SecretRingsRecomp-package -o "$zip.part" https://gamebanana.com/dl/1756030
+        [ "$(md5sum < "$zip.part" | cut -d' ' -f1)" = $md5 ] || { echo "button prompt pack: MD5 mismatch"; exit 1; }
+        mv "$zip.part" "$zip"
+    fi
+    rm -rf "$dst"
+    python3 - "$zip" "$dst" <<'PY'
+import os, sys, zipfile
+z, dst, n = zipfile.ZipFile(sys.argv[1]), sys.argv[2], 0
+for i in z.infolist():
+    name = i.filename.replace('\\', '/')
+    if not name.startswith('RSRE8P/A - ') or name.endswith('/'):
+        continue
+    out = os.path.join(dst, *name.split('/')[1:])
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    with open(out, 'wb') as f:
+        f.write(z.read(i))
+    n += 1
+if not n:
+    sys.exit('button prompt pack: no textures found')
+print('button prompts:', n, 'textures')
+PY
+    cat > "$dst/CREDITS.txt" <<'TXT'
+Xbox button prompts for Sonic and the Secret Rings, unmodified, from:
+
+  "HD Xbox One/Series (And PS4/5) GUI and Controls" by Accelerate
+  https://gamebanana.com/mods/390496
+  Licence: Creative Commons Attribution-NonCommercial-NoDerivs 4.0
+  (https://creativecommons.org/licenses/by-nc-nd/4.0/)
+
+Credits listed by the mod: Accelerate (modder); SEGA/Sonic Team (the game and the Sonic
+Unleashed button prompts); upscaled with Zyro (Hostinger).
+
+Not part of SecretRingsRecomp's GPL-2.0 licence. Turn off "HD texture packs" in the
+settings for the original Wii prompts.
+TXT
 }
 
 if [ -z "$appdir" ]; then

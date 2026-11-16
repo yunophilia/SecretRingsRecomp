@@ -40,7 +40,6 @@ static FILE* GetFile(const std::string& p)
     s_files[p] = f;
     return f;
 }
-#ifdef _WIN32
 
 static bool ReadWhole(const std::string& p, std::vector<uint8_t>& out)
 {
@@ -49,9 +48,6 @@ static bool ReadWhole(const std::string& p, std::vector<uint8_t>& out)
     fseek(f, 0, SEEK_END);
     long n = ftell(f);
     fseek(f, 0, SEEK_SET);
-#else
-    f = fopen(host.c_str(), "rb");   // POSIX files can always be replaced or removed while open
-#endif
     out.resize(n);
     fread(out.data(), 1, n, f);
     fclose(f);

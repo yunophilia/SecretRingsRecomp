@@ -189,6 +189,9 @@ void HiRes_Init(const std::string& configuredDir)
         roots.push_back(user / "textures");
         roots.push_back(user / "game" / "textures");
         roots.push_back(user / ".." / "game" / "textures");
+        // packs shipped with the program (the AppImage's button prompts; its user folder
+        // is elsewhere)
+        if (fs::path exe = Platform_ExeDir(); exe != user) roots.push_back(exe / "textures");
         if (fs::path dolphin = Platform_DolphinTextureDir(); !dolphin.empty()) roots.push_back(dolphin);
     }
     std::error_code ec;
