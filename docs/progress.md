@@ -75,7 +75,8 @@
       vkd3d-shader) and AppImage: builds, installs from the disc image, runs the launcher,
       overlay and TAS tests on NVIDIA and Intel under Wayland and X11 with the same speed
       as on Windows (docs/linux.md, "Test results")
-- [ ] Linux: test on a Steam Deck and on AMD graphics
+- Not tested (no hardware): Steam Deck and AMD graphics; reports from players welcome
+      (docs/linux.md, "Checklist for testers")
 
 ## Releases
 

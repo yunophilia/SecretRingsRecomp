@@ -43,6 +43,8 @@ it, start it with `--appimage-extract-and-run`.
 
 ### Steam Deck
 
+Untested (no Deck to test on); these steps are the usual ones for a native AppImage.
+
 1. In Desktop Mode, put the AppImage in your home folder (for example
    `~/Games/SecretRingsRecomp/`) and make it executable (file properties > Permissions).
 2. Start it once in Desktop Mode: the launcher asks for your disc image and installs the

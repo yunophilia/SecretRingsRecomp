@@ -1,7 +1,7 @@
 # SecretRingsRecomp
 
 A static recompilation of **Sonic and the Secret Rings** (Wii: USA `RSRE8P`, Europe
-`RSRP8P`, Japan `RSRJ8P`) to native Windows x64 and Linux x86-64 (including the Steam Deck). It is a sister project of
+`RSRP8P`, Japan `RSRJ8P`) to native Windows x64 and Linux x86-64. It is a sister project of
 [BlackKnightRecomp](https://github.com/yunophilia/BlackKnightRecomp): the recompiler and
 most of the runtime are shared, retargeted to this game's executable and its older
 (2006/2007) Wii SDK. The goal: play it natively on PC with a normal controller instead of
@@ -68,7 +68,8 @@ real Wii.
 Download `SecretRingsRecomp-<version>-linux-x86_64.AppImage`, make it executable and start
 it: the launcher asks for your disc image and installs the game data into
 `~/.local/share/SecretRingsRecomp` (with the log, `config.ini`, saves and shaders). It needs
-x86-64, glibc 2.35 or newer and a Vulkan driver (Mesa or NVIDIA). On a Steam Deck, add the
+x86-64, glibc 2.35 or newer and a Vulkan driver (Mesa or NVIDIA). Tested on NVIDIA and Intel graphics;
+the Steam Deck and AMD graphics are untested (reports welcome). On a Steam Deck, add the
 AppImage to Steam as a non-Steam game without a Proton version (it is a native program).
 Details, building and testing: [docs/linux.md](docs/linux.md).
 
