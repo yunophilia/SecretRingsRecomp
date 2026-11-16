@@ -71,6 +71,11 @@
       (`SRR_DUMPMEM=1`, or the TAS `dump` command) to find the linked module
 - [x] The European build's copy of the module (linked 0x40 lower): matched with the
       USA one like main.dol, all 1,657 functions shared; boot movies hold 60 fps on both
+- [x] Native Linux build (BlackKnightRecomp's platform layer: SDL3, dxvk-native,
+      vkd3d-shader) and AppImage: builds, installs from the disc image, runs the launcher,
+      overlay and TAS tests on NVIDIA and Intel under Wayland and X11 with the same speed
+      as on Windows (docs/linux.md, "Test results")
+- [ ] Linux: test on a Steam Deck and on AMD graphics
 
 ## Releases
 
