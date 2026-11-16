@@ -13,12 +13,10 @@
 #include "gamepad.h"
 #include "../config.h"
 #include "../kernel/memory.h"
+#include "../platform/window.h"
 
 #include <algorithm>
 #include <cmath>
-#include <windows.h>
-
-extern void* Video_HWND();
 
 namespace
 {
@@ -48,7 +46,7 @@ struct State
     float pitch = 0.0f;     // radians, + = top tilted back towards the player
     float shakeT = -1.0f;   // shake in progress (s)
     float ptrX = 0.5f, ptrY = 0.5f;   // pointer position 0..1 (right stick / mouse)
-    POINT lastMouse{ -1, -1 };
+    int lastMouseX = -1, lastMouseY = -1;
 };
 
 State s_state[4];
@@ -116,19 +114,18 @@ void Motion_Step(int chan, float dt)
     // Pointer: the right stick moves it; moving the mouse inside the window takes over.
     s.ptrX = std::clamp(s.ptrX + p.rx * dt * 0.9f, 0.0f, 1.0f);
     s.ptrY = std::clamp(s.ptrY - p.ry * dt * 0.9f, 0.0f, 1.0f);
-    if (chan == 0)
+    if (chan == 0 && !Gamepad_Automated())   // scripted runs never read the real mouse
     {
-        HWND hwnd = (HWND)Video_HWND();
-        POINT pt;
-        RECT rc;
-        if (hwnd && GetCursorPos(&pt) && (pt.x != s.lastMouse.x || pt.y != s.lastMouse.y))
+        int mx, my;
+        if (Window_Handle() && Window_Cursor(mx, my) && (mx != s.lastMouseX || my != s.lastMouseY))
         {
-            s.lastMouse = pt;
-            if (ScreenToClient(hwnd, &pt) && GetClientRect(hwnd, &rc) && rc.right > 0 && rc.bottom > 0 && pt.x >= 0 && pt.y >= 0 &&
-                pt.x < rc.right && pt.y < rc.bottom)
+            s.lastMouseX = mx;
+            s.lastMouseY = my;
+            float u, v;
+            if (Window_CursorInClient(mx, my, u, v))
             {
-                s.ptrX = (float)pt.x / rc.right;
-                s.ptrY = (float)pt.y / rc.bottom;
+                s.ptrX = u;
+                s.ptrY = v;
             }
         }
     }

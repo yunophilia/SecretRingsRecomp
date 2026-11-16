@@ -14,11 +14,10 @@
 #include "../cpu/cpu.h"
 #include "../log.h"
 #include "../../generated/ppc_recomp_shared.h"
+#include "../platform/input.h"
 
 #include <algorithm>
 #include <deque>
-#include <windows.h>
-#include <Xinput.h>
 
 namespace
 {
@@ -74,7 +73,7 @@ struct PendingCb
 };
 std::deque<PendingCb> s_pending;
 
-// Remote 1 is always present (keyboard works without a pad); 2-4 follow XInput pads.
+// Remote 1 is always present (keyboard works without a pad); 2-4 follow the controllers.
 // Like real remotes, 2-4 stay off after the game disconnects them until a button on
 // that controller is pressed.
 bool Connected(int chan)
@@ -247,10 +246,7 @@ PPC_FUNC(fn_802B2634)
     if (s_chan[chan].motor != on)
     {
         s_chan[chan].motor = on;
-        XINPUT_VIBRATION v{};
-        v.wLeftMotorSpeed = on ? 30000 : 0;
-        v.wRightMotorSpeed = on ? 20000 : 0;
-        XInputSetState(chan, &v);
+        Pad_SetRumble(chan, on ? 30000 : 0, on ? 20000 : 0);
     }
 }
 

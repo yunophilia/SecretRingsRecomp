@@ -3,6 +3,7 @@
 #include "../input/gamepad.h"
 #include "../kernel/memory.h"
 #include "../log.h"
+#include "../platform/platform.h"
 
 #include <map>
 #include <atomic>
@@ -14,7 +15,6 @@
 #include <sstream>
 #include <tuple>
 #include <vector>
-#include <windows.h>
 
 extern "C" uint32_t g_tasProbe[16] = {};
 #ifdef SRR_CALL_COUNTS
@@ -274,6 +274,7 @@ void LoadFile(const std::filesystem::path& path, int depth)
     while (std::getline(f, line))
     {
         n++;
+        if (!line.empty() && line.back() == '\r') line.pop_back();   // CRLF files outside Windows
         if (auto h = line.find('#'); h != std::string::npos) line.resize(h);
         std::istringstream ss(line);
         std::string w;
@@ -404,8 +405,7 @@ void Marker(const std::string& text)
     LOG_INFO("TAS: quit ({})", code);
     if (s_csv) fflush(s_csv);
     Gamepad_StopRumble();
-    TerminateProcess(GetCurrentProcess(), (UINT)code);
-    for (;;) {}
+    Platform_Terminate(code);
 }
 
 void DumpMemory(const std::string& name)
@@ -603,9 +603,7 @@ void Tas_Load(const char* path)
         FATAL("TAS: cannot load {}: {}", p.string(), e.what());
     }
     s_active = true;
-    wchar_t buf[MAX_PATH];
-    GetModuleFileNameW(nullptr, buf, MAX_PATH);
-    s_outDir = std::filesystem::path(buf).parent_path();
+    s_outDir = Platform_UserDir();   // the exe directory on Windows
     LOG_INFO("TAS: loaded {} ({} commands, {} watches)", p.string(), s_cmds.size(), s_watches.size());
 }
 
